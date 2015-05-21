@@ -27,6 +27,7 @@ executable bullet-mini
   include-dirs:
     bullet3/src
   c-sources:
+    cbits/bullet.cpp
     bullet3/src/BulletDynamics/Character/btKinematicCharacterController.cpp
     bullet3/src/BulletDynamics/ConstraintSolver/btConeTwistConstraint.cpp
     bullet3/src/BulletDynamics/ConstraintSolver/btContactConstraint.cpp
