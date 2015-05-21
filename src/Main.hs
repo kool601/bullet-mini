@@ -1,8 +1,14 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
+import Foreign
+import Foreign.C
 
-foreign import ccall "testBullet" testBullet :: IO Int
+newtype DynamicsWorld = DynamicsWorld { unDynamicsWorld :: Ptr DynamicsWorld }
+
+foreign import ccall "createDynamicsWorld" createDynamicsWorld :: IO DynamicsWorld
+foreign import ccall "testBullet" testBullet :: DynamicsWorld -> IO Int
 
 main = do
     putStrLn "Testing bullet..."
-    testBullet
+    dynamicsWorld <- createDynamicsWorld 
+    testBullet dynamicsWorld
     putStrLn "Done!"
