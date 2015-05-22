@@ -24,13 +24,12 @@ void * inline_c_0_baa1bdeeda083f153617fa23f06c41781c48e73f() {
 }
 
 extern "C" {
-void * inline_c_1_20b65303aeac0d79f07fdecba2c9cca6fdd79415(void * dynamicsWorld_inline_c_0) {
+void * inline_c_1_725c7dcdbe6ee42882f9ba7cd1d0fb0bd65b8374(void * dynamicsWorld_inline_c_0) {
  
     btDiscreteDynamicsWorld* dynamicsWorld = (btDiscreteDynamicsWorld*)dynamicsWorld_inline_c_0;
+
+    // Create a ground plane
     btCollisionShape* groundShape = new btStaticPlaneShape(btVector3(0, 1, 0), 1);
-
-    btCollisionShape* fallShape = new btSphereShape(1);
-
 
     btDefaultMotionState* groundMotionState = new btDefaultMotionState(btTransform(btQuaternion(0, 0, 0, 1), btVector3(0, -1, 0)));
     btRigidBody::btRigidBodyConstructionInfo
@@ -39,9 +38,11 @@ void * inline_c_1_20b65303aeac0d79f07fdecba2c9cca6fdd79415(void * dynamicsWorld_
     groundRigidBody->setRestitution(0.5);
     dynamicsWorld->addRigidBody(groundRigidBody);
 
+    // Create a box
+    btCollisionShape* fallShape = new btBoxShape(btVector3(0.5,0.5,0.5));
 
     btDefaultMotionState* fallMotionState =
-            new btDefaultMotionState(btTransform(btQuaternion(0, 0, 0, 1), btVector3(0, 50, 0)));
+            new btDefaultMotionState(btTransform(btQuaternion(0, 1, 1, 0.5), btVector3(0, 20, 0)));
     btScalar mass = 1;
     btVector3 fallInertia(0, 0, 0);
     fallShape->calculateLocalInertia(mass, fallInertia);
@@ -56,27 +57,41 @@ void * inline_c_1_20b65303aeac0d79f07fdecba2c9cca6fdd79415(void * dynamicsWorld_
 }
 
 extern "C" {
-float inline_c_2_9154efb7b517f088caf41dc21e910dbb483cd9e0(void * dynamicsWorld_inline_c_0, void * fallRigidBody_inline_c_1) {
+void inline_c_2_7c002c2c3b163803fc70c275387e913f405ceb7c(void * dynamicsWorld_inline_c_0) {
 
         btDiscreteDynamicsWorld* dynamicsWorld = (btDiscreteDynamicsWorld*)dynamicsWorld_inline_c_0;
-
-        btRigidBody* fallRigidBody = (btRigidBody *)fallRigidBody_inline_c_1;
-
         dynamicsWorld->stepSimulation(1 / 60.f, 10);
-
-        btTransform trans;
-        fallRigidBody->getMotionState()->getWorldTransform(trans);
-
-        std::cout << "sphere height: " << trans.getOrigin().getY() << std::endl;
-
-        return trans.getOrigin().getY();
     
 }
 
 }
 
 extern "C" {
-void inline_c_3_737b39d24e32b073f211cd97cb15ea0b50b132f8(void * dynamicsWorld_inline_c_0) {
+float * inline_c_3_6f20a07f25aab076c779b670d99fcf30f9c2dfbe(void * rigidBody_inline_c_0) {
+
+
+        btRigidBody* rigidBody = (btRigidBody *)rigidBody_inline_c_0;
+
+        btTransform trans;
+        rigidBody->getMotionState()->getWorldTransform(trans);
+
+        btScalar *transformPtr = (btScalar *)malloc(sizeof(btScalar) * 7);
+        transformPtr[0] = trans.getOrigin().getX();
+        transformPtr[1] = trans.getOrigin().getY();
+        transformPtr[2] = trans.getOrigin().getZ();
+        transformPtr[3] = trans.getRotation().getX();
+        transformPtr[4] = trans.getRotation().getY();
+        transformPtr[5] = trans.getRotation().getZ();
+        transformPtr[6] = trans.getRotation().getW();
+
+        return transformPtr;
+    
+}
+
+}
+
+extern "C" {
+void inline_c_4_737b39d24e32b073f211cd97cb15ea0b50b132f8(void * dynamicsWorld_inline_c_0) {
 
     btDiscreteDynamicsWorld* dynamicsWorld = (btDiscreteDynamicsWorld*)dynamicsWorld_inline_c_0;
     //delete dynamicsWorld;

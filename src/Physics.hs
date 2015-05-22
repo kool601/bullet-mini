@@ -6,7 +6,10 @@ module Physics where
 import qualified Language.C.Inline.Cpp as C
 import Types
 import Control.Monad.State
+import Foreign.C
 import Foreign.Ptr
+import Foreign.ForeignPtr
+import Foreign.Marshal.Array
 import Control.Lens
 import Linear
 C.context C.cppCtx
@@ -14,8 +17,13 @@ C.context C.cppCtx
 C.include "<iostream>"
 C.include "<btBulletDynamicsCommon.h>"
 
-createDynamicsWorld :: (MonadIO m) => m (Ptr ())
-createDynamicsWorld = liftIO $ [C.block| void * {
+foreign import ccall "&free" freePtr :: FunPtr (Ptr CFloat -> IO ())
+
+newtype DynamicsWorld = DynamicsWorld { unDynamicsWorld :: Ptr () }
+newtype RigidBody = RigidBody { unRigidBody :: Ptr () }
+
+createDynamicsWorld :: (MonadIO m) => m (DynamicsWorld)
+createDynamicsWorld = DynamicsWorld <$> liftIO [C.block| void * {
     btBroadphaseInterface* broadphase = new btDbvtBroadphase();
 
     btDefaultCollisionConfiguration* collisionConfiguration = new btDefaultCollisionConfiguration();
@@ -30,13 +38,12 @@ createDynamicsWorld = liftIO $ [C.block| void * {
     return dynamicsWorld;
 } |]
 
-addShapes :: (MonadIO m) => Ptr () -> m (Ptr ())
-addShapes dynamicsWorld = liftIO $ [C.block| void * { 
+addShapes :: (MonadIO m) => DynamicsWorld -> m (RigidBody)
+addShapes (DynamicsWorld dynamicsWorld) = RigidBody <$> liftIO [C.block| void * { 
     btDiscreteDynamicsWorld* dynamicsWorld = (btDiscreteDynamicsWorld*)$(void *dynamicsWorld);
+
+    // Create a ground plane
     btCollisionShape* groundShape = new btStaticPlaneShape(btVector3(0, 1, 0), 1);
-
-    btCollisionShape* fallShape = new btSphereShape(1);
-
 
     btDefaultMotionState* groundMotionState = new btDefaultMotionState(btTransform(btQuaternion(0, 0, 0, 1), btVector3(0, -1, 0)));
     btRigidBody::btRigidBodyConstructionInfo
@@ -45,9 +52,11 @@ addShapes dynamicsWorld = liftIO $ [C.block| void * {
     groundRigidBody->setRestitution(0.5);
     dynamicsWorld->addRigidBody(groundRigidBody);
 
+    // Create a box
+    btCollisionShape* fallShape = new btBoxShape(btVector3(0.5,0.5,0.5));
 
     btDefaultMotionState* fallMotionState =
-            new btDefaultMotionState(btTransform(btQuaternion(0, 0, 0, 1), btVector3(0, 50, 0)));
+            new btDefaultMotionState(btTransform(btQuaternion(0, 1, 1, 0.5), btVector3(0, 20, 0)));
     btScalar mass = 1;
     btVector3 fallInertia(0, 0, 0);
     fallShape->calculateLocalInertia(mass, fallInertia);
@@ -58,26 +67,36 @@ addShapes dynamicsWorld = liftIO $ [C.block| void * {
     return fallRigidBody;
 } |]
 
-runPhysics :: (MonadState World m, MonadIO m) => Ptr () -> Ptr () -> m ()
-runPhysics dynamicsWorld fallRigidBody = do
-    
-    newY <- liftIO $ [C.block| float {
+stepSimulation :: (MonadState World m, MonadIO m) => DynamicsWorld -> m ()
+stepSimulation (DynamicsWorld dynamicsWorld) = 
+    liftIO [C.block| void {
         btDiscreteDynamicsWorld* dynamicsWorld = (btDiscreteDynamicsWorld*)$(void *dynamicsWorld);
-
-        btRigidBody* fallRigidBody = (btRigidBody *)$(void *fallRigidBody);
-
         dynamicsWorld->stepSimulation(1 / 60.f, 10);
-
-        btTransform trans;
-        fallRigidBody->getMotionState()->getWorldTransform(trans);
-
-        std::cout << "sphere height: " << trans.getOrigin().getY() << std::endl;
-
-        return trans.getOrigin().getY();
     } |]
 
-    wldCube . objPosition . _y .= realToFrac newY
-    
+updateBody (RigidBody rigidBody) = do
+    ptr <- liftIO $ newForeignPtr freePtr =<< [C.block| float * {
+
+        btRigidBody* rigidBody = (btRigidBody *)$(void *rigidBody);
+
+        btTransform trans;
+        rigidBody->getMotionState()->getWorldTransform(trans);
+
+        btScalar *transformPtr = (btScalar *)malloc(sizeof(btScalar) * 7);
+        transformPtr[0] = trans.getOrigin().getX();
+        transformPtr[1] = trans.getOrigin().getY();
+        transformPtr[2] = trans.getOrigin().getZ();
+        transformPtr[3] = trans.getRotation().getX();
+        transformPtr[4] = trans.getRotation().getY();
+        transformPtr[5] = trans.getRotation().getZ();
+        transformPtr[6] = trans.getRotation().getW();
+
+        return transformPtr;
+    } |]
+    [x,y,z,qx,qy,qz,qw] <- liftIO $ withForeignPtr ptr (peekArray 7)
+
+    wldCube . objPosition    .= V3 (realToFrac x) (realToFrac y) (realToFrac z)
+    wldCube . objOrientation .= Quaternion (realToFrac qw) (V3 (realToFrac qx) (realToFrac qy) (realToFrac qz))    
 
 {-
 removeShape dynamicsWorld rigidBody = [C.block| void {

@@ -19,7 +19,7 @@ import Types
 import Physics
 
 newPlayer :: Player
-newPlayer = Player (V3 0 0 5) (axisAngle (V3 0 1 0) 0)
+newPlayer = Player (V3 0 0 20) (axisAngle (V3 0 1 0) 0)
 
 newWorld :: World
 newWorld = World newPlayer (Object 0 0)
@@ -70,13 +70,13 @@ whenKeyPressed win key action = getKey win key >>= \case
 
 main :: IO ()
 main = do
-    (win, events) <- reacquire 0 $ createWindow "R2" 640 480
+    (win, events) <- reacquire 0 $ createWindow "Bullet" 640 480
 
     cubeProg <- createShaderProgram "src/cube.vert" "src/cube.frag"
     cube     <- makeCube cubeProg
 
     dynamicsWorld <- createDynamicsWorld
-    fallRigidBody <- addShapes dynamicsWorld
+    cubeRigidBody <- addShapes dynamicsWorld
 
     glEnable GL_DEPTH_TEST
     glClearColor 0 0 0.1 1
@@ -84,13 +84,15 @@ main = do
     void . flip runRandT stdGen . flip runStateT newWorld . whileWindow win $ do
         swapBuffers win
         processEvents events $ \e -> do
+            closeOnEscape win e
             return ()
             -- keyDown Key'Enter e addCube
 
         -- applyMouseLook win
         applyMovement win
 
-        runPhysics dynamicsWorld fallRigidBody
+        stepSimulation dynamicsWorld 
+        updateBody cubeRigidBody
 
         glClear (GL_COLOR_BUFFER_BIT .|. GL_DEPTH_BUFFER_BIT)
 
