@@ -53,8 +53,8 @@ addGroundPlane (DynamicsWorld dynamicsWorld) = RigidBody <$> liftIO [C.block| vo
     return groundRigidBody;
     } |]
 
-addCube :: (MonadIO m) => DynamicsWorld -> m RigidBody
-addCube (DynamicsWorld dynamicsWorld) = RigidBody <$> liftIO [C.block| void * {
+addCube :: (MonadIO m, RealFrac a) => DynamicsWorld -> V3 a -> Quaternion a -> m RigidBody
+addCube (DynamicsWorld dynamicsWorld) position orientation = RigidBody <$> liftIO [C.block| void * {
     btDiscreteDynamicsWorld* dynamicsWorld = (btDiscreteDynamicsWorld*)$(void *dynamicsWorld);
 
     // Create a box
@@ -63,7 +63,9 @@ addCube (DynamicsWorld dynamicsWorld) = RigidBody <$> liftIO [C.block| void * {
     // MotionStates are for communicating transforms between our engine and Bullet; we're not using them
     // yet so we just use the btDefaultMotionState
     btDefaultMotionState* cubeMotionState =
-            new btDefaultMotionState(btTransform(btQuaternion(0, 1, 1, 0.5), btVector3(0, 20, 0)));
+            new btDefaultMotionState(btTransform(
+                    btQuaternion($(float qx), $(float qy), $(float qz), $(float qw)), 
+                    btVector3($(float x), $(float y), $(float z))));
     btScalar mass = 1;
     btVector3 cubeInertia(0, 0, 0);
     cubeShape->calculateLocalInertia(mass, cubeInertia);
@@ -73,6 +75,10 @@ addCube (DynamicsWorld dynamicsWorld) = RigidBody <$> liftIO [C.block| void * {
     dynamicsWorld->addRigidBody(cubeRigidBody);
     return cubeRigidBody;
     } |]
+    where
+        (V3 x y z) = fmap realToFrac position
+        (Quaternion qw (V3 qx qy qz)) = fmap realToFrac orientation
+
 
 stepSimulation :: MonadIO m => DynamicsWorld -> m ()
 stepSimulation (DynamicsWorld dynamicsWorld) =
@@ -81,7 +87,8 @@ stepSimulation (DynamicsWorld dynamicsWorld) =
         dynamicsWorld->stepSimulation(1 / 60.f, 10);
     } |]
 
-updateBody (RigidBody rigidBody) = do
+getBodyState :: (Fractional a, MonadIO m) => RigidBody -> m (V3 a, Quaternion a)
+getBodyState (RigidBody rigidBody) = do
     -- Should probably use a mutable vector per shape and rewrite it each tick to avoid alloc
     -- (can pass it in to inline-c with withPtr_)
     ptr <- liftIO $ newForeignPtr freePtr =<< [C.block| float * {
@@ -120,7 +127,8 @@ removeRigidBody dynamicsWorld rigidBody = [C.block| void {
 -}
 
 -- I'm guessing I can get the solver/collisionConfig/dispatcher/broadphase from pointers in the dynamicsWorld
-destroyDynamicsWorld dynamicsWorld = [C.block| void {
+destroyDynamicsWorld :: DynamicsWorld -> IO ()
+destroyDynamicsWorld (DynamicsWorld dynamicsWorld) = [C.block| void {
     btDiscreteDynamicsWorld* dynamicsWorld = (btDiscreteDynamicsWorld*)$(void *dynamicsWorld);
     //delete dynamicsWorld;
     //delete solver;

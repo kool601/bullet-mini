@@ -77,7 +77,7 @@ main = do
 
     dynamicsWorld  <- createDynamicsWorld
     _              <- addGroundPlane dynamicsWorld
-    cubeBodies     <- replicateM 1000 $ addCube dynamicsWorld
+    cubeBodies     <- replicateM 1000 $ addCube dynamicsWorld (V3 0 20 0) (Quaternion 0.5 (V3 0 1 1))
 
     glEnable GL_DEPTH_TEST
     glClearColor 0 0 0.1 1
@@ -105,7 +105,7 @@ main = do
         glBindVertexArray (unVertexArrayObject (cubeVAO cube))
 
         forM_ cubeBodies $ \rigidBody -> do
-            (pos, orient) <- updateBody rigidBody
+            (pos, orient) <- getBodyState rigidBody
             let obj = Object pos orient
             let model = mkTransformation (obj ^. objOrientation) (obj ^. objPosition)
             uniformM44 (cubeUniformMVP cube) (viewProj !*! model)
