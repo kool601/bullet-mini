@@ -1,4 +1,4 @@
-{-# LANGUAGE TemplateHaskell, FlexibleContexts, LambdaCase #-}
+{-# LANGUAGE FlexibleContexts, LambdaCase #-}
 import Graphics.UI.GLFW.Pal
 -- import qualified Graphics.UI.GLFW as GLFW
 import Halive.Utils
@@ -16,13 +16,13 @@ import qualified Data.Map as Map
 import Data.Map (Map)
 import Control.Monad.Random
 import Types
-import Physics
+import Physics.Bullet
 
 newPlayer :: Player
-newPlayer = Player (V3 0 0 20) (axisAngle (V3 0 1 0) 0)
+newPlayer = Player (V3 0 20 60) (axisAngle (V3 0 1 0) 0)
 
 newWorld :: World
-newWorld = World newPlayer (Object 0 0)
+newWorld = World newPlayer mempty
 
 -- | Get a view matrix for a camera at a given position and orientation
 viewMatrix :: (RealFloat a, Conjugate a) => V3 a -> Quaternion a -> M44 a
@@ -70,19 +70,19 @@ whenKeyPressed win key action = getKey win key >>= \case
 
 main :: IO ()
 main = do
-    (win, events) <- reacquire 0 $ createWindow "Bullet" 640 480
+    (win, events) <- reacquire 0 $ createWindow "Bullet" 1024 768
 
-    cubeProg <- createShaderProgram "src/cube.vert" "src/cube.frag"
+    cubeProg <- createShaderProgram "test/cube.vert" "test/cube.frag"
     cube     <- makeCube cubeProg
 
-    dynamicsWorld <- createDynamicsWorld
-    cubeRigidBody <- addShapes dynamicsWorld
+    dynamicsWorld  <- createDynamicsWorld
+    _              <- addGroundPlane dynamicsWorld
+    cubeBodies     <- replicateM 1000 $ addCube dynamicsWorld
 
     glEnable GL_DEPTH_TEST
     glClearColor 0 0 0.1 1
     stdGen <- getStdGen
     void . flip runRandT stdGen . flip runStateT newWorld . whileWindow win $ do
-        swapBuffers win
         processEvents events $ \e -> do
             closeOnEscape win e
             return ()
@@ -91,8 +91,7 @@ main = do
         -- applyMouseLook win
         applyMovement win
 
-        stepSimulation dynamicsWorld 
-        updateBody cubeRigidBody
+        stepSimulation dynamicsWorld
 
         glClear (GL_COLOR_BUFFER_BIT .|. GL_DEPTH_BUFFER_BIT)
 
@@ -105,9 +104,11 @@ main = do
         useProgram (cubeShader cube)
         glBindVertexArray (unVertexArrayObject (cubeVAO cube))
 
-        obj <- use wldCube
-        
-        let model = mkTransformation (obj ^. objOrientation) (obj ^. objPosition)
-        uniformM44 (cubeUniformMVP cube) (viewProj !*! model)
-        glDrawElements GL_TRIANGLES (cubeIndexCount cube) GL_UNSIGNED_INT nullPtr
+        forM_ cubeBodies $ \rigidBody -> do
+            (pos, orient) <- updateBody rigidBody
+            let obj = Object pos orient
+            let model = mkTransformation (obj ^. objOrientation) (obj ^. objPosition)
+            uniformM44 (cubeUniformMVP cube) (viewProj !*! model)
+            glDrawElements GL_TRIANGLES (cubeIndexCount cube) GL_UNSIGNED_INT nullPtr
 
+        swapBuffers win

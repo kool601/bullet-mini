@@ -29,7 +29,7 @@ data Player = Player
     }
 data World = World
     { _wldPlayer :: Player
-    , _wldCube   :: Object
+    , _wldCubes  :: Map ObjectID Object
     }
 
 makeLenses ''World

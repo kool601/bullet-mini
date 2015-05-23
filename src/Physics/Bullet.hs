@@ -2,16 +2,15 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE FlexibleContexts #-}
-module Physics where
+module Physics.Bullet where
 import qualified Language.C.Inline.Cpp as C
-import Types
-import Control.Monad.State
 import Foreign.C
 import Foreign.Ptr
 import Foreign.ForeignPtr
 import Foreign.Marshal.Array
-import Control.Lens
 import Linear
+import Control.Monad.Trans
+
 C.context C.cppCtx
 
 C.include "<iostream>"
@@ -22,7 +21,7 @@ foreign import ccall "&free" freePtr :: FunPtr (Ptr CFloat -> IO ())
 newtype DynamicsWorld = DynamicsWorld { unDynamicsWorld :: Ptr () }
 newtype RigidBody = RigidBody { unRigidBody :: Ptr () }
 
-createDynamicsWorld :: (MonadIO m) => m (DynamicsWorld)
+createDynamicsWorld :: (MonadIO m) => m DynamicsWorld
 createDynamicsWorld = DynamicsWorld <$> liftIO [C.block| void * {
     btBroadphaseInterface* broadphase = new btDbvtBroadphase();
 
@@ -38,8 +37,8 @@ createDynamicsWorld = DynamicsWorld <$> liftIO [C.block| void * {
     return dynamicsWorld;
 } |]
 
-addShapes :: (MonadIO m) => DynamicsWorld -> m (RigidBody)
-addShapes (DynamicsWorld dynamicsWorld) = RigidBody <$> liftIO [C.block| void * { 
+addGroundPlane :: (MonadIO m) => DynamicsWorld -> m RigidBody
+addGroundPlane (DynamicsWorld dynamicsWorld) = RigidBody <$> liftIO [C.block| void * {
     btDiscreteDynamicsWorld* dynamicsWorld = (btDiscreteDynamicsWorld*)$(void *dynamicsWorld);
 
     // Create a ground plane
@@ -51,30 +50,40 @@ addShapes (DynamicsWorld dynamicsWorld) = RigidBody <$> liftIO [C.block| void * 
     btRigidBody* groundRigidBody = new btRigidBody(groundRigidBodyCI);
     groundRigidBody->setRestitution(0.5);
     dynamicsWorld->addRigidBody(groundRigidBody);
+    return groundRigidBody;
+    } |]
+
+addCube :: (MonadIO m) => DynamicsWorld -> m RigidBody
+addCube (DynamicsWorld dynamicsWorld) = RigidBody <$> liftIO [C.block| void * {
+    btDiscreteDynamicsWorld* dynamicsWorld = (btDiscreteDynamicsWorld*)$(void *dynamicsWorld);
 
     // Create a box
-    btCollisionShape* fallShape = new btBoxShape(btVector3(0.5,0.5,0.5));
+    btCollisionShape* cubeShape = new btBoxShape(btVector3(0.5,0.5,0.5));
 
-    btDefaultMotionState* fallMotionState =
+    // MotionStates are for communicating transforms between our engine and Bullet; we're not using them
+    // yet so we just use the btDefaultMotionState
+    btDefaultMotionState* cubeMotionState =
             new btDefaultMotionState(btTransform(btQuaternion(0, 1, 1, 0.5), btVector3(0, 20, 0)));
     btScalar mass = 1;
-    btVector3 fallInertia(0, 0, 0);
-    fallShape->calculateLocalInertia(mass, fallInertia);
-    btRigidBody::btRigidBodyConstructionInfo fallRigidBodyCI(mass, fallMotionState, fallShape, fallInertia);
-    btRigidBody* fallRigidBody = new btRigidBody(fallRigidBodyCI);
-    fallRigidBody->setRestitution(0.5);
-    dynamicsWorld->addRigidBody(fallRigidBody);
-    return fallRigidBody;
-} |]
+    btVector3 cubeInertia(0, 0, 0);
+    cubeShape->calculateLocalInertia(mass, cubeInertia);
+    btRigidBody::btRigidBodyConstructionInfo cubeRigidBodyCI(mass, cubeMotionState, cubeShape, cubeInertia);
+    btRigidBody* cubeRigidBody = new btRigidBody(cubeRigidBodyCI);
+    cubeRigidBody->setRestitution(0.5);
+    dynamicsWorld->addRigidBody(cubeRigidBody);
+    return cubeRigidBody;
+    } |]
 
-stepSimulation :: (MonadState World m, MonadIO m) => DynamicsWorld -> m ()
-stepSimulation (DynamicsWorld dynamicsWorld) = 
+stepSimulation :: MonadIO m => DynamicsWorld -> m ()
+stepSimulation (DynamicsWorld dynamicsWorld) =
     liftIO [C.block| void {
         btDiscreteDynamicsWorld* dynamicsWorld = (btDiscreteDynamicsWorld*)$(void *dynamicsWorld);
         dynamicsWorld->stepSimulation(1 / 60.f, 10);
     } |]
 
 updateBody (RigidBody rigidBody) = do
+    -- Should probably use a mutable vector per shape and rewrite it each tick to avoid alloc
+    -- (can pass it in to inline-c with withPtr_)
     ptr <- liftIO $ newForeignPtr freePtr =<< [C.block| float * {
 
         btRigidBody* rigidBody = (btRigidBody *)$(void *rigidBody);
@@ -94,24 +103,19 @@ updateBody (RigidBody rigidBody) = do
         return transformPtr;
     } |]
     [x,y,z,qx,qy,qz,qw] <- liftIO $ withForeignPtr ptr (peekArray 7)
-
-    wldCube . objPosition    .= V3 (realToFrac x) (realToFrac y) (realToFrac z)
-    wldCube . objOrientation .= Quaternion (realToFrac qw) (V3 (realToFrac qx) (realToFrac qy) (realToFrac qz))    
+    
+    let position    = V3 (realToFrac x) (realToFrac y) (realToFrac z)
+        orientation = Quaternion (realToFrac qw) (V3 (realToFrac qx) (realToFrac qy) (realToFrac qz))
+    return (position, orientation)
 
 {-
-removeShape dynamicsWorld rigidBody = [C.block| void {
-    dynamicsWorld->removeRigidBody(fallRigidBody);
-    delete fallRigidBody->getMotionState();
-    delete fallRigidBody;
+removeRigidBody dynamicsWorld rigidBody = [C.block| void {
+    dynamicsWorld->removeRigidBody(rigidBody);
+    delete rigidBody->getMotionState();
+    delete rigidBody;
 
-    dynamicsWorld->removeRigidBody(groundRigidBody);
-    delete groundRigidBody->getMotionState();
-    delete groundRigidBody;
-
-
-    delete fallShape;
-
-    delete groundShape;
+    // Should handle this separately.
+    delete rigidBodyShape;
 }|]
 -}
 
