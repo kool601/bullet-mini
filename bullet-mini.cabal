@@ -40,8 +40,10 @@ library
     inline-c-cpp
   hs-source-dirs:      src
   default-language:    Haskell2010
-  if os(windows)     
-    extra-libraries: stdc++
+  if os(windows)
+    extra-libraries: libstdc++-6
+    extra-lib-dirs:  c:\msys64\usr\local\ghc-7.10.1\mingw\bin
+    -- ghc-options: -optl-static-libgcc
   else
     extra-libraries: c++
   ghc-options:         -Wall

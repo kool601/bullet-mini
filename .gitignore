@@ -1,3 +1,5 @@
 src/Physics/Bullet.cpp
 cabal.sandbox.config
 dist
+build
+test/Main.exe
