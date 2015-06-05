@@ -58,7 +58,7 @@ addCube (DynamicsWorld dynamicsWorld) position orientation = RigidBody <$> liftI
     btDiscreteDynamicsWorld* dynamicsWorld = (btDiscreteDynamicsWorld*)$(void *dynamicsWorld);
 
     // Create a box
-    btCollisionShape* cubeShape = new btBoxShape(btVector3(0.5,0.5,0.5));
+    btCollisionShape* cubeShape = new btBoxShape(btVector3(1,1,1));
 
     // MotionStates are for communicating transforms between our engine and Bullet; we're not using them
     // yet so we just use the btDefaultMotionState

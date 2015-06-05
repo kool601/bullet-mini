@@ -23,9 +23,9 @@ data Object = Object
     { _objPosition    :: V3 GLfloat
     , _objOrientation :: Quaternion GLfloat
     }
-data Player = Player 
+data Player = Player
     { _plrPosition    :: V3 GLfloat
-    , _plrOrientation :: Quaternion GLfloat 
+    , _plrOrientation :: Quaternion GLfloat
     }
 data World = World
     { _wldPlayer :: Player

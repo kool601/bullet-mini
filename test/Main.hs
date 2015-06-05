@@ -80,6 +80,7 @@ main = do
     cubeBodies     <- replicateM 1000 $ addCube dynamicsWorld (V3 0 20 0) (Quaternion 0.5 (V3 0 1 1))
 
     glEnable GL_DEPTH_TEST
+
     glClearColor 0 0 0.1 1
     stdGen <- getStdGen
     void . flip runRandT stdGen . flip runStateT newWorld . whileWindow win $ do

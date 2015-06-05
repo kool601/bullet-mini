@@ -1,10 +1,11 @@
+{-# LANGUAGE RecordWildCards #-}
 module Cube where
 
-import Graphics.GL
-import Foreign
-import Linear
-import Graphics.GL.Pal
-import Control.Monad.Trans
+import           Control.Monad.Trans
+import           Foreign
+import           Graphics.GL
+import           Graphics.GL.Pal
+import           Linear
 
 data Cube = Cube
         { cubeVAO        :: VertexArrayObject
@@ -18,15 +19,15 @@ data Cube = Cube
 ----------------------------------------------------------
 
 renderCube :: MonadIO m => Cube -> M44 GLfloat -> m ()
-renderCube cube mvp = liftIO $ do
+renderCube Cube{..} mvp = liftIO $ do
 
-    useProgram (cubeShader cube)
-    
-    uniformM44 (cubeUniformMVP cube) mvp
+    useProgram cubeShader
 
-    glBindVertexArray (unVertexArrayObject (cubeVAO cube))
+    uniformM44 cubeUniformMVP mvp
 
-    glDrawElements GL_TRIANGLES (cubeIndexCount cube) GL_UNSIGNED_INT nullPtr
+    glBindVertexArray (unVertexArrayObject cubeVAO)
+
+    glDrawElements GL_TRIANGLES cubeIndexCount GL_UNSIGNED_INT nullPtr
 
     glBindVertexArray 0
 
@@ -48,19 +49,19 @@ makeCube program = do
     -----------------
     -- Cube Positions
     -----------------
-    
+
     -- Buffer the cube vertices
-    let cubeVertices = 
+    let cubeVertices =
             --- front
             [ -1.0 , -1.0 ,  1.0
-            ,  1.0 , -1.0 ,  1.0  
-            ,  1.0 ,  1.0 ,  1.0  
-            , -1.0 ,  1.0 ,  1.0  
+            ,  1.0 , -1.0 ,  1.0
+            ,  1.0 ,  1.0 ,  1.0
+            , -1.0 ,  1.0 ,  1.0
 
             --- back
-            , -1.0 , -1.0 , -1.0  
-            ,  1.0 , -1.0 , -1.0  
-            ,  1.0 ,  1.0 , -1.0  
+            , -1.0 , -1.0 , -1.0
+            ,  1.0 , -1.0 , -1.0
+            ,  1.0 ,  1.0 , -1.0
             , -1.0 ,  1.0 , -1.0 ] :: [GLfloat]
 
 
@@ -68,12 +69,12 @@ makeCube program = do
     vaoCubeVertices <- overPtr (glGenBuffers 1)
 
     glBindBuffer GL_ARRAY_BUFFER vaoCubeVertices
-    
+
     let cubeVerticesSize = fromIntegral (sizeOf (undefined :: GLfloat) * length cubeVertices)
 
-    withArray cubeVertices $ 
+    withArray cubeVertices $
         \cubeVerticesPtr ->
-            glBufferData GL_ARRAY_BUFFER cubeVerticesSize (castPtr cubeVerticesPtr) GL_STATIC_DRAW 
+            glBufferData GL_ARRAY_BUFFER cubeVerticesSize (castPtr cubeVerticesPtr) GL_STATIC_DRAW
 
     -- Describe our vertices array to OpenGL
     glEnableVertexAttribArray (fromIntegral (unAttributeLocation aVertex))
@@ -91,7 +92,7 @@ makeCube program = do
     --------------
 
     -- Buffer the cube colors
-    let cubeColors = 
+    let cubeColors =
             -- front colors
             [ 1.0, 0.0, 0.0
             , 0.0, 1.0, 0.0
@@ -113,7 +114,7 @@ makeCube program = do
         \cubeColorsPtr ->
             glBufferData GL_ARRAY_BUFFER cubeColorsSize (castPtr cubeColorsPtr) GL_STATIC_DRAW
 
-    
+
     glEnableVertexAttribArray (fromIntegral (unAttributeLocation aColor))
 
     glVertexAttribPointer
@@ -129,9 +130,9 @@ makeCube program = do
     -----------
 
     -- Buffer the cube ids
-    let cubeIDs = 
+    let cubeIDs =
             [ 0
-            , 1 
+            , 1
             , 2
             , 3
             , 4
@@ -147,7 +148,7 @@ makeCube program = do
         \cubeIDsPtr ->
             glBufferData GL_ARRAY_BUFFER cubeIDsSize (castPtr cubeIDsPtr) GL_STATIC_DRAW
 
-    
+
     glEnableVertexAttribArray (fromIntegral (unAttributeLocation aID))
 
     glVertexAttribPointer
@@ -165,7 +166,7 @@ makeCube program = do
     ----------------
 
     -- Buffer the cube indices
-    let cubeIndices = 
+    let cubeIndices =
             -- front
             [ 0, 1, 2
             , 2, 3, 0
@@ -184,24 +185,22 @@ makeCube program = do
             -- right
             , 3, 2, 6
             , 6, 7, 3 ] :: [GLuint]
-    
+
     iboCubeElements <- overPtr (glGenBuffers 1)
-    
+
     glBindBuffer GL_ELEMENT_ARRAY_BUFFER iboCubeElements
 
     let cubeElementsSize = fromIntegral (sizeOf (undefined :: GLuint) * length cubeIndices)
-    
-    withArray cubeIndices $ 
+
+    withArray cubeIndices $
         \cubeIndicesPtr ->
             glBufferData GL_ELEMENT_ARRAY_BUFFER cubeElementsSize (castPtr cubeIndicesPtr) GL_STATIC_DRAW
-    
+
     glBindVertexArray 0
 
-    return $ Cube 
+    return Cube
         { cubeVAO        = VertexArrayObject vaoCube
         , cubeShader     = program
         , cubeIndexCount = fromIntegral (length cubeIndices)
         , cubeUniformMVP = uMVP
-        } 
-
-
+        }
