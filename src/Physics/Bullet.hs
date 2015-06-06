@@ -53,12 +53,12 @@ addGroundPlane (DynamicsWorld dynamicsWorld) = RigidBody <$> liftIO [C.block| vo
   return groundRigidBody;
   } |]
 
-addCube :: (MonadIO m, RealFrac a) => DynamicsWorld -> V3 a -> Quaternion a -> m RigidBody
-addCube (DynamicsWorld dynamicsWorld) position orientation = RigidBody <$> liftIO [C.block| void * {
+addCube :: (MonadIO m, RealFrac a) => DynamicsWorld -> V3 a -> Quaternion a -> V3 a-> m RigidBody
+addCube (DynamicsWorld dynamicsWorld) position orientation scale = RigidBody <$> liftIO [C.block| void * {
   btDiscreteDynamicsWorld* dynamicsWorld = (btDiscreteDynamicsWorld*)$(void *dynamicsWorld);
 
   // Create a box
-  btCollisionShape* cubeShape = new btBoxShape(btVector3(1,1,1));
+  btCollisionShape* cubeShape = new btBoxShape(btVector3($(float sx), $(float sy), $(float sz)));
 
   // MotionStates are for communicating transforms between our engine and Bullet; we're not using them
   // yet so we just use the btDefaultMotionState
@@ -76,7 +76,8 @@ addCube (DynamicsWorld dynamicsWorld) position orientation = RigidBody <$> liftI
   return cubeRigidBody;
   } |]
   where
-    (V3 x y z) = fmap realToFrac position
+    (V3 x y z)                    = fmap realToFrac position
+    (V3 sx sy sz)                 = fmap realToFrac scale
     (Quaternion qw (V3 qx qy qz)) = fmap realToFrac orientation
 
 
