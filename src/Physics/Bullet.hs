@@ -80,8 +80,8 @@ addCube (DynamicsWorld dynamicsWorld) position orientation = RigidBody <$> liftI
     (Quaternion qw (V3 qx qy qz)) = fmap realToFrac orientation
 
 
-applyCentralForce :: Real a => RigidBody -> V3 a -> IO (Ptr ())
-applyCentralForce (RigidBody rigidBody) force = [C.block| void * {
+applyCentralForce :: (MonadIO m, Real a) => RigidBody -> V3 a -> m (Ptr ())
+applyCentralForce (RigidBody rigidBody) force = liftIO [C.block| void * {
     btRigidBody* rigidBody = (btRigidBody *)$(void *rigidBody);
     rigidBody->applyCentralImpulse(btVector3($(float x), $(float y), $(float z)));
   } |]
