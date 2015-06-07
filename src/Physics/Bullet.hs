@@ -2,14 +2,20 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE RecordWildCards #-}
+
 module Physics.Bullet where
+
 import qualified Language.C.Inline.Cpp as C
+
 import Foreign.C
 import Foreign.Ptr
 import Foreign.ForeignPtr
 import Foreign.Marshal.Array
 import Linear
 import Control.Monad.Trans
+
+import Data.Default 
 
 C.context C.cppCtx
 
@@ -18,11 +24,33 @@ C.include "<btBulletDynamicsCommon.h>"
 
 foreign import ccall "&free" freePtr :: FunPtr (Ptr CFloat -> IO ())
 
+data PhysicsConfig = PhysicsConfig
+  { restitution :: Float
+  , position    :: V3 Float
+  , rotation    :: Quaternion Float
+  , scale       :: V3 Float
+  , inertia     :: V3 Float
+  , mass        :: Float
+  }
+
+instance Default PhysicsConfig where
+  def = PhysicsConfig 
+        { position    = V3 0 0 0
+        , scale       = V3 1 1 1
+        , inertia     = V3 0 0 0
+        , rotation    = axisAngle ( V3 1 0 0 ) 0
+        , mass        = 1
+        , restitution = 0.5
+        }
+
+
+
 newtype DynamicsWorld = DynamicsWorld { unDynamicsWorld :: Ptr () }
 newtype RigidBody = RigidBody { unRigidBody :: Ptr () }
 
 createDynamicsWorld :: (MonadIO m) => m DynamicsWorld
 createDynamicsWorld = DynamicsWorld <$> liftIO [C.block| void * {
+
   btBroadphaseInterface* broadphase = new btDbvtBroadphase();
 
   btDefaultCollisionConfiguration* collisionConfiguration = new btDefaultCollisionConfiguration();
@@ -35,72 +63,123 @@ createDynamicsWorld = DynamicsWorld <$> liftIO [C.block| void * {
   dynamicsWorld->setGravity(btVector3(0, -10, 0));
 
   return dynamicsWorld;
-} |]
 
-addGroundPlane :: (MonadIO m) => DynamicsWorld -> m RigidBody
-addGroundPlane (DynamicsWorld dynamicsWorld) = RigidBody <$> liftIO [C.block| void * {
-  btDiscreteDynamicsWorld* dynamicsWorld = (btDiscreteDynamicsWorld*)$(void *dynamicsWorld);
-
-  // Create a ground plane
-  btCollisionShape* groundShape = new btStaticPlaneShape(btVector3(0, 1, 0), 1);
-
-  btDefaultMotionState* groundMotionState = new btDefaultMotionState(btTransform(btQuaternion(0, 0, 0, 1), btVector3(0, -1, 0)));
-  btRigidBody::btRigidBodyConstructionInfo
-      groundRigidBodyCI(0, groundMotionState, groundShape, btVector3(0, 0, 0));
-  btRigidBody* groundRigidBody = new btRigidBody(groundRigidBodyCI);
-  groundRigidBody->setRestitution(0.5);
-  dynamicsWorld->addRigidBody(groundRigidBody);
-  return groundRigidBody;
   } |]
 
-addCube :: (MonadIO m, RealFrac a) => DynamicsWorld -> V3 a -> Quaternion a -> V3 a-> m RigidBody
-addCube (DynamicsWorld dynamicsWorld) position orientation scale = RigidBody <$> liftIO [C.block| void * {
-  btDiscreteDynamicsWorld* dynamicsWorld = (btDiscreteDynamicsWorld*)$(void *dynamicsWorld);
+
+-- Ground plane should always be infinite!
+addGroundPlane :: ( MonadIO m ) => DynamicsWorld -> m RigidBody
+addGroundPlane dynamicsWorld =
+  addStaticPlane dynamicsWorld def { rotation = axisAngle ( V3 1 0 0 ) ((-pi)/2) }
+
+
+-- Create a static plane using PhysicsConfig
+-- Making sure pass in all of the information from the physics config
+-- as usable c++ data
+addStaticPlane :: ( MonadIO m ) => DynamicsWorld -> PhysicsConfig -> m RigidBody
+addStaticPlane (DynamicsWorld dynamicsWorld) PhysicsConfig{..} = RigidBody <$> liftIO [C.block| void * {
+
+  btDiscreteDynamicsWorld* dynamicsWorld = ( btDiscreteDynamicsWorld* ) $( void *dynamicsWorld );
+
+  // Create a ground plane
+  btCollisionShape* collider = new btStaticPlaneShape( btVector3( 0 , 0 , 1 ) , 0 );
+
+  btQuaternion q = btQuaternion( $( float qx ) , $( float qy ), $( float qz ), $( float qw ) );
+  btVector3    p = btVector3( $( float x ) , $( float y ) , $( float z ) );
+
+  btDefaultMotionState* motionState = new btDefaultMotionState( btTransform( q , p ) );
+
+  btRigidBody::btRigidBodyConstructionInfo
+      rigidBodyCI( 0 , motionState , collider , btVector3( 0 , 0 , 0 ) );
+
+  btRigidBody* rigidBody = new btRigidBody( rigidBodyCI );  
+
+  rigidBody         -> setRestitution( $(float r) );
+  dynamicsWorld     -> addRigidBody( rigidBody );
+
+  return rigidBody;
+
+  } |] 
+  where
+    (V3 x y z)                    = realToFrac <$> position
+    (Quaternion qw (V3 qx qy qz)) = realToFrac <$> rotation
+    r                             = realToFrac     restitution
+
+
+
+
+
+addCube :: ( MonadIO m ) => DynamicsWorld -> PhysicsConfig -> m RigidBody
+
+addCube ( DynamicsWorld dynamicsWorld ) PhysicsConfig{..} = RigidBody <$> liftIO [C.block| void * {
+
+  btDiscreteDynamicsWorld* dynamicsWorld = ( btDiscreteDynamicsWorld* ) $( void *dynamicsWorld );
 
   // Create a box
-  btCollisionShape* cubeShape = new btBoxShape(btVector3($(float sx), $(float sy), $(float sz)));
+  btVector3 s = btVector3( $( float sx ) , $( float sy ) , $( float sz ) );
+  btCollisionShape* collider = new btBoxShape( s );
 
   // MotionStates are for communicating transforms between our engine and Bullet; we're not using them
   // yet so we just use the btDefaultMotionState
-  btDefaultMotionState* cubeMotionState =
-      new btDefaultMotionState(btTransform(
-          btQuaternion($(float qx), $(float qy), $(float qz), $(float qw)), 
-          btVector3($(float x), $(float y), $(float z))));
-  btScalar mass = 1;
-  btVector3 cubeInertia(0, 0, 0);
-  cubeShape->calculateLocalInertia(mass, cubeInertia);
-  btRigidBody::btRigidBodyConstructionInfo cubeRigidBodyCI(mass, cubeMotionState, cubeShape, cubeInertia);
-  btRigidBody* cubeRigidBody = new btRigidBody(cubeRigidBodyCI);
-  cubeRigidBody->setRestitution(0.5);
-  dynamicsWorld->addRigidBody(cubeRigidBody);
-  return cubeRigidBody;
+  btQuaternion q = btQuaternion( $( float qx ) , $( float qy ), $( float qz ), $( float qw ) );
+  btVector3    p = btVector3( $( float x ) , $( float y ) , $( float z ) );
+
+  btDefaultMotionState* motionState = new btDefaultMotionState( btTransform( q , p ) );
+
+  btScalar mass     = $( float m );
+  btVector3 inertia = btVector3( $( float ix ) , $( float iy ) , $( float iz ) );
+
+  collider -> calculateLocalInertia( mass , inertia );
+
+  btRigidBody::btRigidBodyConstructionInfo rigidBodyCI( mass , motionState , collider , inertia );
+  btRigidBody* rigidBody = new btRigidBody( rigidBodyCI );
+
+  rigidBody         -> setRestitution( $(float r) );
+  dynamicsWorld     -> addRigidBody( rigidBody );
+
+  return rigidBody;
+
   } |]
   where
-    (V3 x y z)                    = fmap realToFrac position
-    (V3 sx sy sz)                 = fmap realToFrac scale
-    (Quaternion qw (V3 qx qy qz)) = fmap realToFrac orientation
+    (V3 x y z)                    = realToFrac <$> position
+    (V3 sx sy sz)                 = realToFrac <$> scale
+    (V3 ix iy iz)                 = realToFrac <$> inertia
+    (Quaternion qw (V3 qx qy qz)) = realToFrac <$> rotation
+    r                             = realToFrac     restitution
+    m                             = realToFrac     mass
 
 
 applyCentralForce :: (MonadIO m, Real a) => RigidBody -> V3 a -> m (Ptr ())
 applyCentralForce (RigidBody rigidBody) force = liftIO [C.block| void * {
-    btRigidBody* rigidBody = (btRigidBody *)$(void *rigidBody);
-    rigidBody->applyCentralImpulse(btVector3($(float x), $(float y), $(float z)));
+
+    btRigidBody* rigidBody = (btRigidBody *) $(void *rigidBody);
+
+    btVector3 force = btVector3( $(float x) , $(float y) , $(float z) );
+    rigidBody -> applyCentralImpulse( force );
+
   } |]
   where
     (V3 x y z) = realToFrac <$> force
 
 
+
+
 stepSimulation :: MonadIO m => DynamicsWorld -> m ()
-stepSimulation (DynamicsWorld dynamicsWorld) =
-  liftIO [C.block| void {
+stepSimulation (DynamicsWorld dynamicsWorld) = liftIO [C.block| void {
+
     btDiscreteDynamicsWorld* dynamicsWorld = (btDiscreteDynamicsWorld*)$(void *dynamicsWorld);
     dynamicsWorld->stepSimulation(1 / 60.f, 10);
+
   } |]
+
+
 
 getBodyState :: (Fractional a, MonadIO m) => RigidBody -> m (V3 a, Quaternion a)
 getBodyState (RigidBody rigidBody) = do
+
   -- Should probably use a mutable vector per shape and rewrite it each tick to avoid alloc
   -- (can pass it in to inline-c with withPtr_)
+
   ptr <- liftIO $ newForeignPtr freePtr =<< [C.block| float * {
 
     btRigidBody* rigidBody = (btRigidBody *)$(void *rigidBody);
@@ -109,20 +188,25 @@ getBodyState (RigidBody rigidBody) = do
     rigidBody->getMotionState()->getWorldTransform(trans);
 
     btScalar *transformPtr = (btScalar *)malloc(sizeof(btScalar) * 7);
+
     transformPtr[0] = trans.getOrigin().getX();
     transformPtr[1] = trans.getOrigin().getY();
     transformPtr[2] = trans.getOrigin().getZ();
+
     transformPtr[3] = trans.getRotation().getX();
     transformPtr[4] = trans.getRotation().getY();
     transformPtr[5] = trans.getRotation().getZ();
     transformPtr[6] = trans.getRotation().getW();
 
     return transformPtr;
+
   } |]
+
   [x,y,z,qx,qy,qz,qw] <- liftIO $ withForeignPtr ptr (peekArray 7)
   
   let position    = V3 (realToFrac x) (realToFrac y) (realToFrac z)
       orientation = Quaternion (realToFrac qw) (V3 (realToFrac qx) (realToFrac qy) (realToFrac qz))
+
   return (position, orientation)
 
 {-
