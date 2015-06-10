@@ -17,6 +17,8 @@ import Data.Map (Map)
 import Control.Monad.Random
 import Types
 import Physics.Bullet
+import Data.Default 
+
 
 newPlayer :: Player
 newPlayer = Player (V3 0 20 60) (axisAngle (V3 0 1 0) 0)
@@ -76,7 +78,7 @@ main = do
     cube     <- makeCube cubeProg
 
     dynamicsWorld  <- createDynamicsWorld
-    _              <- addGroundPlane dynamicsWorld
+    _              <- addGroundPlane dynamicsWorld 0
     cubeBodies     <- replicateM 1000 $ addCube dynamicsWorld (V3 0 20 0) (Quaternion 0.5 (V3 0 1 1))
 
     glEnable GL_DEPTH_TEST

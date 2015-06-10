@@ -31,7 +31,9 @@ data PhysicsConfig = PhysicsConfig
   , scale       :: V3 Float
   , inertia     :: V3 Float
   , mass        :: Float
+  , yPos        :: Float
   }
+
 
 instance Default PhysicsConfig where
   def = PhysicsConfig 
@@ -41,15 +43,23 @@ instance Default PhysicsConfig where
         , rotation    = axisAngle ( V3 1 0 0 ) 0
         , mass        = 1
         , restitution = 0.5
+        , yPos        = 0
         }
 
 
+data PhysicsWorldConfig = PhysicsWorldConfig
+  { gravity :: Float
+  }
+instance Default PhysicsWorldConfig where
+  def = PhysicsWorldConfig 
+        { gravity = -9.8
+        }
 
 newtype DynamicsWorld = DynamicsWorld { unDynamicsWorld :: Ptr () }
 newtype RigidBody = RigidBody { unRigidBody :: Ptr () }
 
-createDynamicsWorld :: (MonadIO m) => m DynamicsWorld
-createDynamicsWorld = DynamicsWorld <$> liftIO [C.block| void * {
+createDynamicsWorld :: (MonadIO m) =>  PhysicsWorldConfig -> m DynamicsWorld 
+createDynamicsWorld PhysicsWorldConfig{..} = DynamicsWorld <$> liftIO [C.block| void * {
 
   btBroadphaseInterface* broadphase = new btDbvtBroadphase();
 
@@ -60,17 +70,19 @@ createDynamicsWorld = DynamicsWorld <$> liftIO [C.block| void * {
 
   btDiscreteDynamicsWorld* dynamicsWorld = new btDiscreteDynamicsWorld(dispatcher, broadphase, solver, collisionConfiguration);
 
-  dynamicsWorld->setGravity(btVector3(0, -10, 0));
+  dynamicsWorld->setGravity(btVector3(0,  $( float g ), 0));
 
   return dynamicsWorld;
 
   } |]
+  where
+    g = realToFrac gravity
 
 
 -- Ground plane should always be infinite!
-addGroundPlane :: ( MonadIO m ) => DynamicsWorld -> m RigidBody
-addGroundPlane dynamicsWorld =
-  addStaticPlane dynamicsWorld def { rotation = axisAngle ( V3 1 0 0 ) ((-pi)/2) }
+addGroundPlane :: ( MonadIO m ) => DynamicsWorld -> Float -> m RigidBody
+addGroundPlane dynamicsWorld height =
+  addStaticPlane dynamicsWorld def { rotation = axisAngle ( V3 1 0 0 ) ((-pi)/2) , yPos = height }
 
 
 -- Create a static plane using PhysicsConfig
@@ -82,7 +94,7 @@ addStaticPlane (DynamicsWorld dynamicsWorld) PhysicsConfig{..} = RigidBody <$> l
   btDiscreteDynamicsWorld* dynamicsWorld = ( btDiscreteDynamicsWorld* ) $( void *dynamicsWorld );
 
   // Create a ground plane
-  btCollisionShape* collider = new btStaticPlaneShape( btVector3( 0 , 0 , 1 ) , 0 );
+  btCollisionShape* collider = new btStaticPlaneShape( btVector3( 0 , 0 , 1 ) , $( float yP ));
 
   btQuaternion q = btQuaternion( $( float qx ) , $( float qy ), $( float qz ), $( float qw ) );
   btVector3    p = btVector3( $( float x ) , $( float y ) , $( float z ) );
@@ -104,6 +116,7 @@ addStaticPlane (DynamicsWorld dynamicsWorld) PhysicsConfig{..} = RigidBody <$> l
     (V3 x y z)                    = realToFrac <$> position
     (Quaternion qw (V3 qx qy qz)) = realToFrac <$> rotation
     r                             = realToFrac     restitution
+    yP                            = realToFrac     yPos
 
 
 
