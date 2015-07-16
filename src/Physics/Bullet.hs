@@ -162,8 +162,8 @@ addCube ( DynamicsWorld dynamicsWorld ) PhysicsConfig{..} = RigidBody <$> liftIO
     m                             = realToFrac     mass
 
 
-applyCentralForce :: (MonadIO m, Real a) => RigidBody -> V3 a -> m (Ptr ())
-applyCentralForce (RigidBody rigidBody) force = liftIO [C.block| void * {
+applyCentralForce :: (MonadIO m, Real a) => RigidBody -> V3 a -> m ()
+applyCentralForce (RigidBody rigidBody) force = liftIO [C.block| void {
 
     btRigidBody* rigidBody = (btRigidBody *) $(void *rigidBody);
 

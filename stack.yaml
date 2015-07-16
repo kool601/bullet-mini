@@ -1,0 +1,7 @@
+flags:
+packages:
+- '.'
+extra-deps:
+- inline-c-0.5.3.4
+- inline-c-cpp-0.1.0.0
+resolver: nightly-2015-06-28
