@@ -15,8 +15,6 @@ import Foreign.Marshal.Array
 import Linear
 import Control.Monad.Trans
 
-import Data.Default 
-
 C.context C.cppCtx
 
 C.include "<iostream>"
@@ -35,8 +33,8 @@ data PhysicsConfig = PhysicsConfig
   }
 
 
-instance Default PhysicsConfig where
-  def = PhysicsConfig 
+instance Monoid PhysicsConfig where
+  mempty = PhysicsConfig 
         { position    = V3 0 0 0
         , scale       = V3 1 1 1
         , inertia     = V3 0 0 0
@@ -45,15 +43,17 @@ instance Default PhysicsConfig where
         , restitution = 0.5
         , yPos        = 0
         }
+  mappend _ b = b
 
 
 data PhysicsWorldConfig = PhysicsWorldConfig
   { gravity :: Float
   }
-instance Default PhysicsWorldConfig where
-  def = PhysicsWorldConfig 
+instance Monoid PhysicsWorldConfig where
+  mempty = PhysicsWorldConfig 
         { gravity = -9.8
         }
+  mappend _ b = b
 
 newtype DynamicsWorld = DynamicsWorld { unDynamicsWorld :: Ptr () }
 newtype RigidBody = RigidBody { unRigidBody :: Ptr () }
@@ -82,7 +82,7 @@ createDynamicsWorld PhysicsWorldConfig{..} = DynamicsWorld <$> liftIO [C.block| 
 -- Ground plane should always be infinite!
 addGroundPlane :: ( MonadIO m ) => DynamicsWorld -> Float -> m RigidBody
 addGroundPlane dynamicsWorld height =
-  addStaticPlane dynamicsWorld def { rotation = axisAngle ( V3 1 0 0 ) ((-pi)/2) , yPos = height }
+  addStaticPlane dynamicsWorld mempty { rotation = axisAngle ( V3 1 0 0 ) ((-pi)/2) , yPos = height }
 
 
 -- Create a static plane using PhysicsConfig
