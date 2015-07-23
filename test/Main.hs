@@ -17,7 +17,6 @@ import Data.Map (Map)
 import Control.Monad.Random
 import Types
 import Physics.Bullet
-import Data.Default 
 
 
 newPlayer :: Player
@@ -77,9 +76,12 @@ main = do
     cubeProg <- createShaderProgram "test/cube.vert" "test/cube.frag"
     cube     <- makeCube cubeProg
 
-    dynamicsWorld  <- createDynamicsWorld
+    dynamicsWorld  <- createDynamicsWorld mempty
     _              <- addGroundPlane dynamicsWorld 0
-    cubeBodies     <- replicateM 1000 $ addCube dynamicsWorld (V3 0 20 0) (Quaternion 0.5 (V3 0 1 1))
+    cubeBodies     <- replicateM 1000 $ addCube dynamicsWorld mempty 
+        { position = V3 0 20 0
+        , rotation = Quaternion 0.5 (V3 0 1 1)
+        }
 
     glEnable GL_DEPTH_TEST
 

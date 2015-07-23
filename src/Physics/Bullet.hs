@@ -17,7 +17,6 @@ import Control.Monad.Trans
 
 C.context C.cppCtx
 
-C.include "<iostream>"
 C.include "<btBulletDynamicsCommon.h>"
 
 foreign import ccall "&free" freePtr :: FunPtr (Ptr CFloat -> IO ())

@@ -36,14 +36,22 @@ library
   build-depends:       
     base,
     linear, mtl,
-    inline-c,
+    inline-c >= 0.5.4.3,
     inline-c-cpp
   hs-source-dirs:      src
   default-language:    Haskell2010
   if os(windows)
+    -- extra-libraries: stdc++
+    -- extra-libraries: libstdc++
     extra-libraries: libstdc++-6
-    extra-lib-dirs:  c:\msys64\mingw64\bin
+    -- extra-libraries: libstdc++-6 libgcc_s_sjlj-1
+    -- extra-lib-dirs:  C:\msys64\usr\local\ghc-7.10.1\mingw\lib
+    -- extra-lib-dirs:  C:\msys64\usr\local\ghc-7.10.1\mingw\lib\bin
+    extra-lib-dirs:  C:\msys64\usr\local\ghc-7.10.1\mingw\lib\bin
+    -- Allows us to not link libgcc_s_sjlj-1
+    cc-options: -fno-exceptions
   ghc-options:         -Wall
+  
   include-dirs:
     bullet3/src
   c-sources:
