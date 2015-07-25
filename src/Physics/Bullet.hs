@@ -14,6 +14,8 @@ import Foreign.ForeignPtr
 import Foreign.Marshal.Array
 import Linear
 import Control.Monad.Trans
+import Data.Monoid
+import Control.Applicative
 
 C.context C.cppCtx
 
@@ -57,7 +59,7 @@ instance Monoid PhysicsWorldConfig where
 newtype DynamicsWorld = DynamicsWorld { unDynamicsWorld :: Ptr () }
 newtype RigidBody = RigidBody { unRigidBody :: Ptr () }
 
-createDynamicsWorld :: (MonadIO m) =>  PhysicsWorldConfig -> m DynamicsWorld 
+createDynamicsWorld :: (Functor m, MonadIO m) =>  PhysicsWorldConfig -> m DynamicsWorld 
 createDynamicsWorld PhysicsWorldConfig{..} = DynamicsWorld <$> liftIO [C.block| void * {
 
   btBroadphaseInterface* broadphase = new btDbvtBroadphase();
@@ -79,7 +81,7 @@ createDynamicsWorld PhysicsWorldConfig{..} = DynamicsWorld <$> liftIO [C.block| 
 
 
 -- Ground plane should always be infinite!
-addGroundPlane :: ( MonadIO m ) => DynamicsWorld -> Float -> m RigidBody
+addGroundPlane :: (Functor m, MonadIO m) => DynamicsWorld -> Float -> m RigidBody
 addGroundPlane dynamicsWorld height =
   addStaticPlane dynamicsWorld mempty { rotation = axisAngle ( V3 1 0 0 ) ((-pi)/2) , yPos = height }
 
@@ -87,7 +89,7 @@ addGroundPlane dynamicsWorld height =
 -- Create a static plane using PhysicsConfig
 -- Making sure pass in all of the information from the physics config
 -- as usable c++ data
-addStaticPlane :: ( MonadIO m ) => DynamicsWorld -> PhysicsConfig -> m RigidBody
+addStaticPlane :: (Functor m, MonadIO m) => DynamicsWorld -> PhysicsConfig -> m RigidBody
 addStaticPlane (DynamicsWorld dynamicsWorld) PhysicsConfig{..} = RigidBody <$> liftIO [C.block| void * {
 
   btDiscreteDynamicsWorld* dynamicsWorld = ( btDiscreteDynamicsWorld* ) $( void *dynamicsWorld );
@@ -121,7 +123,7 @@ addStaticPlane (DynamicsWorld dynamicsWorld) PhysicsConfig{..} = RigidBody <$> l
 
 
 
-addCube :: ( MonadIO m ) => DynamicsWorld -> PhysicsConfig -> m RigidBody
+addCube :: (Functor m, MonadIO m) => DynamicsWorld -> PhysicsConfig -> m RigidBody
 
 addCube ( DynamicsWorld dynamicsWorld ) PhysicsConfig{..} = RigidBody <$> liftIO [C.block| void * {
 
@@ -161,7 +163,7 @@ addCube ( DynamicsWorld dynamicsWorld ) PhysicsConfig{..} = RigidBody <$> liftIO
     m                             = realToFrac     mass
 
 
-applyCentralForce :: (MonadIO m, Real a) => RigidBody -> V3 a -> m ()
+applyCentralForce :: (Functor m, MonadIO m, Real a) => RigidBody -> V3 a -> m ()
 applyCentralForce (RigidBody rigidBody) force = liftIO [C.block| void {
 
     btRigidBody* rigidBody = (btRigidBody *) $(void *rigidBody);

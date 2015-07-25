@@ -2,7 +2,6 @@
 module Types where
 import Graphics.UI.GLFW.Pal
 -- import qualified Graphics.UI.GLFW as GLFW
-import Halive.Utils
 import Graphics.GL.Pal
 import Graphics.GL
 import Linear

@@ -26,7 +26,7 @@ test-suite cubes
     bullet-mini,
     gl, gl-pal, 
     glfw-pal, 
-    halive, linear, 
+    linear, 
     lens, mtl, random, MonadRandom,
     containers
 
@@ -45,9 +45,9 @@ library
     -- extra-libraries: libstdc++
     extra-libraries: libstdc++-6
     -- extra-libraries: libstdc++-6 libgcc_s_sjlj-1
-    -- extra-lib-dirs:  C:\msys64\usr\local\ghc-7.10.1\mingw\lib
-    -- extra-lib-dirs:  C:\msys64\usr\local\ghc-7.10.1\mingw\lib\bin
-    extra-lib-dirs:  C:\msys64\usr\local\ghc-7.10.1\mingw\lib\bin
+    -- extra-lib-dirs:  C:\msys64\usr\local\ghc\mingw\lib
+    -- extra-lib-dirs:  C:\msys64\usr\local\ghc\mingw\lib\bin
+    extra-lib-dirs:  C:\msys64\usr\local\ghc\mingw\bin
     -- Allows us to not link libgcc_s_sjlj-1
     cc-options: -fno-exceptions
   ghc-options:         -Wall

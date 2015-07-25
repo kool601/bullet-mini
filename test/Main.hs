@@ -1,7 +1,6 @@
 {-# LANGUAGE FlexibleContexts, LambdaCase #-}
 import Graphics.UI.GLFW.Pal
 -- import qualified Graphics.UI.GLFW as GLFW
-import Halive.Utils
 import Graphics.GL.Pal
 import Graphics.GL
 import Linear
@@ -71,7 +70,7 @@ whenKeyPressed win key action = getKey win key >>= \case
 
 main :: IO ()
 main = do
-    (win, events) <- reacquire 0 $ createWindow "Bullet" 1024 768
+    (win, events) <- createWindow "Bullet" 1024 768
 
     cubeProg <- createShaderProgram "test/cube.vert" "test/cube.frag"
     cube     <- makeCube cubeProg
