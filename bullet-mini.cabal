@@ -50,6 +50,8 @@ library
     extra-lib-dirs:  C:\msys64\usr\local\ghc\mingw\bin
     -- Allows us to not link libgcc_s_sjlj-1
     cc-options: -fno-exceptions
+  if os(osx)
+    extra-libraries: c++
   ghc-options:         -Wall
   
   include-dirs:

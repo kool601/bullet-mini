@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -F -pgmF strip-ths #-}
 {-# LANGUAGE TemplateHaskell, FlexibleContexts, LambdaCase #-}
 module Types where
 import Graphics.UI.GLFW.Pal
