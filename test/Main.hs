@@ -63,10 +63,6 @@ applyMovement win = do
     whenKeyPressed win Key'Space       $ movePlayer (V3 0   pos 0  )
     whenKeyPressed win Key'LeftControl $ movePlayer (V3 0   neg 0  )
 
-whenKeyPressed :: MonadIO m => Window -> Key -> m () -> m ()
-whenKeyPressed win key action = getKey win key >>= \case
-    KeyState'Pressed -> action
-    _                -> return ()
 
 main :: IO ()
 main = do

@@ -3,4 +3,4 @@ cabal.sandbox.config
 dist
 build
 .stack-work
-test/Main.exe
+.strip-ths
