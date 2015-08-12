@@ -4,7 +4,6 @@ import Graphics.UI.GLFW.Pal
 import Graphics.GL.Pal
 import Graphics.GL
 import Linear
-import Cube
 
 import Control.Monad
 import Control.Monad.State
@@ -14,7 +13,10 @@ import Foreign (nullPtr)
 import qualified Data.Map as Map
 import Data.Map (Map)
 import Control.Monad.Random
+
 import Types
+import Cube
+
 import Physics.Bullet
 
 

@@ -1,8 +1,14 @@
+{-# LANGUAGE CPP #-}
+#ifdef mingw32_HOST_OS
 {-# OPTIONS_GHC -F -pgmF strip-ths #-}
+#endif
+
 {-# LANGUAGE TemplateHaskell, FlexibleContexts, LambdaCase #-}
+
 module Types where
+
 import Graphics.UI.GLFW.Pal
--- import qualified Graphics.UI.GLFW as GLFW
+
 import Graphics.GL.Pal
 import Graphics.GL
 import Linear
