@@ -123,6 +123,24 @@ addStaticPlane (DynamicsWorld dynamicsWorld) PhysicsConfig{..} = RigidBody <$> l
 
 
 
+setRigidBodyKinematic (RigidBody rigidBody)  = liftIO [C.block| void {
+  btRigidBody *rigidBody     = (btRigidBody *) $(void *rigidBody);
+  rigidBody->setCollisionFlags(rigidBody->getCollisionFlags() | btCollisionObject::CF_KINEMATIC_OBJECT);
+  rigidBody->setActivationState(DISABLE_DEACTIVATION);
+  }|]
+
+setRigidBodyWorldTransform (RigidBody rigidBody) position rotation = liftIO [C.block| void {
+  btRigidBody *rigidBody     = (btRigidBody *) $(void *rigidBody);
+
+  btQuaternion q = btQuaternion( $( float qx ) , $( float qy ), $( float qz ), $( float qw ) );
+  btVector3    p = btVector3( $( float x ) , $( float y ) , $( float z ) );
+  rigidBody -> getMotionState() -> setWorldTransform( btTransform(q , p) );
+
+  }|]
+  where
+    (V3 x y z)                    = realToFrac <$> position
+    (Quaternion qw (V3 qx qy qz)) = realToFrac <$> rotation
+
 addCube :: (Functor m, MonadIO m) => DynamicsWorld -> PhysicsConfig -> m RigidBody
 
 addCube (DynamicsWorld dynamicsWorld) PhysicsConfig{..} = RigidBody <$> liftIO [C.block| void * {
