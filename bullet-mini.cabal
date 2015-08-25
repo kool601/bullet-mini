@@ -19,7 +19,7 @@ cabal-version:       >=1.10
 test-suite cubes
   type:                exitcode-stdio-1.0
   main-is:             Main.hs
-  hs-source-dirs:      test
+  hs-source-dirs:      test/cubes
   default-language:    Haskell2010
   other-modules:
     Cube
@@ -33,6 +33,16 @@ test-suite cubes
     linear, 
     lens, mtl, random, MonadRandom,
     containers
+
+executable memory
+  build-depends:
+    base,
+    bullet-mini,
+    linear
+  main-is: Main.hs
+  hs-source-dirs: test/memory
+  ghc-options: -Wall -O2
+  ghc-prof-options: -Wall -O2 -fprof-auto -prof -threaded "-with-rtsopts=-N -T -p -s"
 
 library
   exposed-modules:
@@ -56,7 +66,8 @@ library
     cc-options: -fno-exceptions
   if os(osx)
     extra-libraries: c++
-  ghc-options:         -Wall
+  ghc-options:         -Wall -O2
+  ghc-prof-options:    -Wall -O2 -fprof-auto
   
   include-dirs:
     bullet3/src
