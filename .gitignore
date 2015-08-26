@@ -4,3 +4,12 @@ dist
 build
 .stack-work
 .strip-ths
+*.aux
+
+*.hp
+
+*.prof
+
+*.ps
+
+*.svg
