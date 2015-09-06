@@ -3,12 +3,17 @@ import Linear
 import Control.Monad
 import Control.Concurrent
 
+{-
+  Intended to be run with profiling to test if memory is successfully freed
+  when adding and deleting cubes.
+-}
+
 main = do
 
   dynamicsWorld  <- createDynamicsWorld mempty
-  _              <- addGroundPlane dynamicsWorld 0
+  _              <- addGroundPlane dynamicsWorld (RigidBodyID 0) 0
 
-  cubeBodies     <- replicateM 1000 $ addCube dynamicsWorld mempty 
+  cubeBodies     <- forM [1..1000] $ \i -> addCube dynamicsWorld (RigidBodyID i) mempty 
         { position = V3 0 20 0
         , rotation = Quaternion 0.5 (V3 0 1 1)
         }
@@ -22,7 +27,7 @@ main = do
 
   forM_ cubeBodies (removeCube dynamicsWorld)
 
-  cubeBodies2     <- replicateM 1000 $ addCube dynamicsWorld mempty 
+  cubeBodies2     <- forM [1..1000] $ \i -> addCube dynamicsWorld (RigidBodyID i) mempty 
         { position = V3 0 20 0
         , rotation = Quaternion 0.5 (V3 0 1 1)
         }

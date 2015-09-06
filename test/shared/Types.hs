@@ -18,10 +18,8 @@ import Control.Monad
 import Control.Monad.State
 import System.Random
 import Control.Lens
-import Foreign (nullPtr)
-import qualified Data.Map as Map
+
 import Data.Map (Map)
-import Control.Monad.Random
 
 type ObjectID = Int
 
@@ -41,3 +39,10 @@ data World = World
 makeLenses ''World
 makeLenses ''Object
 makeLenses ''Player
+
+
+newPlayer :: Player
+newPlayer = Player (V3 0 20 60) (axisAngle (V3 0 1 0) 0)
+
+newWorld :: World
+newWorld = World newPlayer mempty

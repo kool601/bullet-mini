@@ -10,7 +10,7 @@ import Control.Monad.State
 import System.Random
 import Control.Lens
 import Foreign (nullPtr)
--- import qualified Data.Map as Map
+import qualified Data.Map as Map
 import Data.Map (Map)
 import Control.Monad.Random
 
@@ -24,7 +24,6 @@ import Physics.Bullet
 
 main :: IO ()
 main = do
-    putStrLn "HIIII"
     (win, events) <- createWindow "Bullet" 1024 768
 
     cubeProg <- createShaderProgram "test/shared/cube.vert" "test/shared/cube.frag"
@@ -32,7 +31,7 @@ main = do
 
     dynamicsWorld  <- createDynamicsWorld mempty
     _              <- addGroundPlane dynamicsWorld (RigidBodyID 0) 0
-    cubeBodies     <- forM [1..1000] $ \i -> addCube dynamicsWorld (RigidBodyID i) mempty 
+    cubeBodies     <- forM [1..10] $ \i -> addCube dynamicsWorld (RigidBodyID i) mempty 
         { position = V3 0 20 0
         , rotation = Quaternion 0.5 (V3 0 1 1)
         }
@@ -51,6 +50,8 @@ main = do
         applyMovement win
 
         stepSimulation dynamicsWorld
+
+        liftIO . print =<< getCollisions dynamicsWorld
 
         glClear (GL_COLOR_BUFFER_BIT .|. GL_DEPTH_BUFFER_BIT)
 
