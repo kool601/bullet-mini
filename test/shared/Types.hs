@@ -3,46 +3,44 @@
 {-# OPTIONS_GHC -F -pgmF strip-ths #-}
 #endif
 
-{-# LANGUAGE TemplateHaskell, FlexibleContexts, LambdaCase #-}
+{-# LANGUAGE TemplateHaskell, FlexibleContexts, LambdaCase, DeriveDataTypeable #-}
 
 module Types where
 
-import Graphics.UI.GLFW.Pal
-
 import Graphics.GL.Pal
 import Graphics.GL
+import Game.Pal
+import Data.Data
 import Linear
-import Cube
+import Physics.Bullet
 
-import Control.Monad
-import Control.Monad.State
-import System.Random
 import Control.Lens
 
 import Data.Map (Map)
 
 type ObjectID = Int
 
-data Object = Object
-    { _objPosition    :: V3 GLfloat
-    , _objOrientation :: Quaternion GLfloat
-    }
-data Player = Player
-    { _plrPosition    :: V3 GLfloat
-    , _plrOrientation :: Quaternion GLfloat
-    }
+data Cube = Cube
+  { _cubColor :: V4 GLfloat
+  , _cubBody  :: RigidBody
+  }
+makeLenses ''Cube
+
 data World = World
-    { _wldPlayer :: Player
-    , _wldCubes  :: Map ObjectID Object
-    }
-
+  { _wldPlayer :: Pose
+  , _wldCubes  :: Map ObjectID Cube
+  }
 makeLenses ''World
-makeLenses ''Object
-makeLenses ''Player
 
-
-newPlayer :: Player
-newPlayer = Player (V3 0 20 60) (axisAngle (V3 0 1 0) 0)
+data Uniforms = Uniforms
+  { uModelViewProjection :: UniformLocation (M44 GLfloat)
+  , uInverseModel        :: UniformLocation (M44 GLfloat)
+  , uModel               :: UniformLocation (M44 GLfloat)
+  , uCamera              :: UniformLocation (V3  GLfloat)
+  , uDiffuse             :: UniformLocation (V4  GLfloat)
+  } deriving (Data)
 
 newWorld :: World
-newWorld = World newPlayer mempty
+newWorld = World
+    (Pose (V3 0 20 60) (axisAngle (V3 0 1 0) 0))
+    mempty

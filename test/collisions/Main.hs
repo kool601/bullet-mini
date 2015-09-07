@@ -1,22 +1,18 @@
-{-# LANGUAGE FlexibleContexts, LambdaCase #-}
+{-# LANGUAGE FlexibleContexts, LambdaCase, RecordWildCards #-}
 import Graphics.UI.GLFW.Pal
--- import qualified Graphics.UI.GLFW as GLFW
 import Graphics.GL.Pal
 import Graphics.GL
 import Linear
+import Game.Pal
 
 import Control.Monad
 import Control.Monad.State
-import System.Random
 import Control.Lens
-import Foreign (nullPtr)
 import qualified Data.Map as Map
-import Data.Map (Map)
-import Control.Monad.Random
+
+import Data.Maybe
 
 import Types
-import Cube
-import Movement
 
 import Physics.Bullet
 
@@ -24,51 +20,74 @@ import Physics.Bullet
 
 main :: IO ()
 main = do
-    (win, events) <- createWindow "Bullet" 1024 768
+  (window, events, _maybeHMD, _maybeRenderHMD, _maybeSixenseBase) <- initWindow "Bullet" True False
 
-    cubeProg <- createShaderProgram "test/shared/cube.vert" "test/shared/cube.frag"
-    cube     <- makeCube cubeProg
+  cubeProg   <- createShaderProgram "test/shared/cube.vert" "test/shared/cube.frag"
+  cubeGeo    <- cubeGeometry (1 :: V3 GLfloat) (V3 1 1 1)
+  cubeEntity <- entity cubeGeo cubeProg
+  let Uniforms{..} = uniforms cubeEntity
+  useProgram (program cubeEntity)
 
-    dynamicsWorld  <- createDynamicsWorld mempty
-    _              <- addGroundPlane dynamicsWorld (RigidBodyID 0) 0
-    cubeBodies     <- forM [1..10] $ \i -> addCube dynamicsWorld (RigidBodyID i) mempty 
-        { position = V3 0 20 0
-        , rotation = Quaternion 0.5 (V3 0 1 1)
+  dynamicsWorld  <- createDynamicsWorld mempty
+  _              <- addGroundPlane dynamicsWorld (RigidBodyID 0) 0
+  
+
+  glEnable GL_DEPTH_TEST
+
+  glClearColor 0 0 0.1 1
+
+  void . flip runStateT newWorld $ do
+
+    forM_ [1..10] $ \i -> do
+      rigidBody <- addCube dynamicsWorld (RigidBodyID i) mempty 
+        { pcPosition = V3 0 20 0
+        , pcRotation = Quaternion 0.5 (V3 0 1 1)
+        }
+      wldCubes . at (fromIntegral i) ?= Cube
+        { _cubBody = rigidBody
+        , _cubColor = V4 1 1 1 1
         }
 
-    glEnable GL_DEPTH_TEST
+    whileWindow window $ do
+      glClear (GL_COLOR_BUFFER_BIT .|. GL_DEPTH_BUFFER_BIT)
 
-    glClearColor 0 0 0.1 1
-    stdGen <- getStdGen
-    void . flip runRandT stdGen . flip runStateT newWorld . whileWindow win $ do
-        processEvents events $ \e -> do
-            closeOnEscape win e
-            return ()
-            -- keyDown Key'Enter e addCube
+      -- applyMouseLook window wldPlayer
+      applyWASD window wldPlayer
+      processEvents events $ \e -> 
+        closeOnEscape window e
 
-        -- applyMouseLook win
-        applyMovement win
+      stepSimulation dynamicsWorld
 
-        stepSimulation dynamicsWorld
+      -- Set all cubes to white
+      cubeIDs <- Map.keys <$> use wldCubes
+      forM_ cubeIDs $ \cubeID -> 
+        wldCubes . at cubeID . traverse . cubColor .= V4 1 1 1 1
+      -- Set all colliding cubes to green
+      collisions <- getCollisions dynamicsWorld
+      forM_ collisions $ \collision -> do
+        let bodyAID = (fromIntegral . unRigidBodyID . cbBodyAID) collision
+        wldCubes . at bodyAID . traverse . cubColor .= V4 0 1 0 1
+        let bodyBID = (fromIntegral . unRigidBodyID . cbBodyBID) collision
+        wldCubes . at bodyBID . traverse . cubColor .= V4 0 1 0 1
 
-        liftIO . print =<< getCollisions dynamicsWorld
 
-        glClear (GL_COLOR_BUFFER_BIT .|. GL_DEPTH_BUFFER_BIT)
+      projMat <- makeProjection window
+      viewMat <- viewMatrixFromPose <$> use wldPlayer
 
-        projMat <- makeProjection win
-        viewMat <- playerViewMat
+      let viewProj = projMat !*! viewMat
 
-        let viewProj = projMat !*! viewMat
+      -- Begin cube batch
 
-        -- Begin cube batch
-        useProgram (cubeShader cube)
-        glBindVertexArray (unVertexArrayObject (cubeVAO cube))
+      cubes <- Map.toList <$> use wldCubes
+      withVAO (vAO cubeEntity) $ 
+        forM_ cubes $ \(cubeID, cube) -> do
+          (position, orientation) <- getBodyState (cube ^. cubBody)
 
-        forM_ cubeBodies $ \rigidBody -> do
-            (pos, orient) <- getBodyState rigidBody
-            let obj = Object pos orient
-            let model = mkTransformation (obj ^. objOrientation) (obj ^. objPosition)
-            uniformM44 (cubeUniformMVP cube) (viewProj !*! model)
-            glDrawElements GL_TRIANGLES (cubeIndexCount cube) GL_UNSIGNED_INT nullPtr
+          let model = mkTransformation orientation position
+          uniformM44 uModelViewProjection (viewProj !*! model)
+          uniformM44 uInverseModel        (fromMaybe model (inv44 model))
+          uniformM44 uModel               model
+          uniformV4  uDiffuse             (cube ^. cubColor)
+          glDrawElements GL_TRIANGLES (vertCount (geometry cubeEntity)) GL_UNSIGNED_INT nullPtr
 
-        swapBuffers win
+      swapBuffers window

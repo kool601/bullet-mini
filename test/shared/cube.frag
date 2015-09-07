@@ -1,12 +1,36 @@
 #version 330 core
 
-in vec3 vColor;
-in float vID;
+uniform vec3 uCamera;
+uniform vec4 uDiffuse;
 
-out vec4 color;
+in      vec3 vPosition;
+in      vec3 vNormal;
 
-void main(void) {
+out     vec4 fragColor;
 
-  color = vec4( vColor  * abs( sin( vID * 10. )) , 1.0 );
+const   vec3 lightColor = vec3(1);
+const   float ambient = 0.2;
 
+void main() {
+    vec3 lightPosition = uCamera;
+    
+    //calculate normal in world coordinates
+    vec3 normal = normalize(vNormal);
+
+    //calculate the location of this fragment in world coordinates
+    vec3 surfacePos = vPosition;
+    
+    // vec4 surfaceColor = texture(materialTex, fragTexCoord);
+    vec4 surfaceColor = uDiffuse;
+    vec3 surfaceToLight = normalize(lightPosition - surfacePos);
+
+    // Calculate final color of the pixel, based on:
+    // 1. The angle of incidence: diffuseCoefficient
+    // 2. The color/intensities of the light: lightColor
+    // 3. The diffuse color: surfaceColor
+
+    float diffuseCoefficient = max(ambient, dot(normal, surfaceToLight));
+    vec3 diffuseLit = diffuseCoefficient * surfaceColor.rgb * lightColor;
+
+    fragColor = vec4(diffuseLit, uDiffuse.a);
 }

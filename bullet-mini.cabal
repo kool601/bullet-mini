@@ -21,14 +21,12 @@ executable cubes
   hs-source-dirs:      test/cubes, test/shared
   default-language:    Haskell2010
   other-modules:
-    Cube
     Types
-    Movement
   ghc-options: -Wall -O2
   build-depends:
     base,
     bullet-mini,
-    gl, gl-pal, 
+    gl, gl-pal, game-pal,
     glfw-pal, 
     linear, 
     lens, mtl, random, MonadRandom,
@@ -39,14 +37,12 @@ executable collisions
   hs-source-dirs:      test/collisions, test/shared
   default-language:    Haskell2010
   other-modules:
-    Cube
     Types
-    Movement
   ghc-options: -Wall -O2
   build-depends:
     base,
     bullet-mini,
-    gl, gl-pal, 
+    gl, gl-pal, game-pal,
     glfw-pal, 
     linear, 
     lens, mtl, random, MonadRandom,
@@ -58,6 +54,7 @@ executable memory
     bullet-mini,
     linear
   main-is: Main.hs
+  default-language:    Haskell2010
   hs-source-dirs: test/memory
   ghc-options: -Wall -O2
   ghc-prof-options: -Wall -O2 -fprof-auto -prof -threaded "-with-rtsopts=-N -T -p -s"

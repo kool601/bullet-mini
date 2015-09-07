@@ -3,7 +3,10 @@ packages:
 - '.'
 # For tests
 - ../glfw-pal
+- ../game-pal
 - ../gl-pal
+- ../hydra-hs
+- ../oculus-mini
 extra-deps:
 - inline-c-0.5.4.3
 - inline-c-cpp-0.1.0.0

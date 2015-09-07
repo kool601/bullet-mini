@@ -35,25 +35,25 @@ C.include "<btBulletDynamicsCommon.h>"
 foreign import ccall "&free" freePtr :: FunPtr (Ptr CFloat -> IO ())
 
 data PhysicsConfig = PhysicsConfig
-  { restitution :: Float
-  , position    :: V3 Float
-  , rotation    :: Quaternion Float
-  , scale       :: V3 Float
-  , inertia     :: V3 Float
-  , mass        :: Float
-  , yPos        :: Float
+  { pcRestitution :: Float
+  , pcPosition    :: V3 Float
+  , pcRotation    :: Quaternion Float
+  , pcScale       :: V3 Float
+  , pcInertia     :: V3 Float
+  , pcMass        :: Float
+  , pcYPos        :: Float
   }
 
 
 instance Monoid PhysicsConfig where
   mempty = PhysicsConfig 
-        { position    = V3 0 0 0
-        , scale       = V3 1 1 1
-        , inertia     = V3 0 0 0
-        , rotation    = axisAngle ( V3 1 0 0 ) 0
-        , mass        = 1
-        , restitution = 0.5
-        , yPos        = 0
+        { pcPosition    = V3 0 0 0
+        , pcScale       = V3 1 1 1
+        , pcInertia     = V3 0 0 0
+        , pcRotation    = axisAngle ( V3 1 0 0 ) 0
+        , pcMass        = 1
+        , pcRestitution = 0.5
+        , pcYPos        = 0
         }
   mappend _ b = b
 
@@ -98,7 +98,7 @@ createDynamicsWorld PhysicsWorldConfig{..} = DynamicsWorld <$> liftIO [C.block| 
 -- Ground plane should always be infinite!
 addGroundPlane :: (Functor m, MonadIO m) => DynamicsWorld -> RigidBodyID -> Float -> m RigidBody
 addGroundPlane dynamicsWorld rigidBodyID height  =
-  addStaticPlane dynamicsWorld rigidBodyID mempty { rotation = axisAngle ( V3 1 0 0 ) ((-pi)/2) , yPos = height }
+  addStaticPlane dynamicsWorld rigidBodyID mempty { pcRotation = axisAngle ( V3 1 0 0 ) ((-pi)/2) , pcYPos = height }
 
 
 -- Create a static plane using PhysicsConfig
@@ -134,10 +134,10 @@ addStaticPlane (DynamicsWorld dynamicsWorld) (RigidBodyID rigidBodyID) PhysicsCo
 
     } |] 
   where
-    (V3 x y z)                    = realToFrac <$> position
-    (Quaternion qw (V3 qx qy qz)) = realToFrac <$> rotation
-    r                             = realToFrac     restitution
-    yP                            = realToFrac     yPos
+    (V3 x y z)                    = realToFrac <$> pcPosition
+    (Quaternion qw (V3 qx qy qz)) = realToFrac <$> pcRotation
+    r                             = realToFrac     pcRestitution
+    yP                            = realToFrac     pcYPos
 
 addCube :: (Functor m, MonadIO m) => DynamicsWorld -> RigidBodyID -> PhysicsConfig -> m RigidBody
 addCube (DynamicsWorld dynamicsWorld) (RigidBodyID rigidBodyID) PhysicsConfig{..} = liftIO $ 
@@ -177,12 +177,12 @@ addCube (DynamicsWorld dynamicsWorld) (RigidBodyID rigidBodyID) PhysicsConfig{..
 
     } |]
   where
-    (V3 x y z)                    = realToFrac <$> position
-    (V3 sx sy sz)                 = realToFrac <$> scale
-    (V3 ix iy iz)                 = realToFrac <$> inertia
-    (Quaternion qw (V3 qx qy qz)) = realToFrac <$> rotation
-    r                             = realToFrac     restitution
-    m                             = realToFrac     mass
+    (V3 x y z)                    = realToFrac <$> pcPosition
+    (V3 sx sy sz)                 = realToFrac <$> pcScale
+    (V3 ix iy iz)                 = realToFrac <$> pcInertia
+    (Quaternion qw (V3 qx qy qz)) = realToFrac <$> pcRotation
+    r                             = realToFrac     pcRestitution
+    m                             = realToFrac     pcMass
 
 removeCube :: (Functor m, MonadIO m) => DynamicsWorld -> RigidBody -> m ()
 removeCube (DynamicsWorld dynamicsWorld) (RigidBody rigidBody) = liftIO [C.block| void {
