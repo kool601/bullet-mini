@@ -20,13 +20,13 @@ import Physics.Bullet
 
 main :: IO ()
 main = do
-  (window, events, _maybeHMD, _maybeRenderHMD, _maybeSixenseBase) <- initWindow "Bullet" True False
+  GamePal{..} <- initGamePal "Bullet" []
 
   cubeProg   <- createShaderProgram "test/shared/cube.vert" "test/shared/cube.frag"
   cubeGeo    <- cubeGeometry (1 :: V3 GLfloat) (V3 1 1 1)
-  cubeEntity <- entity cubeGeo cubeProg
-  let Uniforms{..} = uniforms cubeEntity
-  useProgram (program cubeEntity)
+  cubeShape  <- makeShape cubeGeo cubeProg
+  let Uniforms{..} = sUniforms cubeShape
+  useProgram (sProgram cubeShape)
 
   dynamicsWorld  <- createDynamicsWorld mempty
   _              <- addGroundPlane dynamicsWorld (RigidBodyID 0) 0
@@ -48,13 +48,13 @@ main = do
         , _cubColor = V4 1 1 1 1
         }
 
-    whileWindow window $ do
+    whileWindow gpWindow $ do
       glClear (GL_COLOR_BUFFER_BIT .|. GL_DEPTH_BUFFER_BIT)
 
-      -- applyMouseLook window wldPlayer
-      applyWASD window wldPlayer
-      processEvents events $ \e -> 
-        closeOnEscape window e
+      -- applyMouseLook gpWindow wldPlayer
+      applyWASD gpWindow wldPlayer
+      processEvents gpEvents $ \e -> 
+        closeOnEscape gpWindow e
 
       stepSimulation dynamicsWorld
 
@@ -71,7 +71,7 @@ main = do
         wldCubes . at bodyBID . traverse . cubColor .= V4 0 1 0 1
 
 
-      projMat <- makeProjection window
+      projMat <- makeProjection gpWindow
       viewMat <- viewMatrixFromPose <$> use wldPlayer
 
       let viewProj = projMat !*! viewMat
@@ -79,7 +79,7 @@ main = do
       -- Begin cube batch
 
       cubes <- Map.toList <$> use wldCubes
-      withVAO (vAO cubeEntity) $ 
+      withVAO (sVAO cubeShape) $ 
         forM_ cubes $ \(cubeID, cube) -> do
           (position, orientation) <- getBodyState (cube ^. cubBody)
 
@@ -88,6 +88,6 @@ main = do
           uniformM44 uInverseModel        (fromMaybe model (inv44 model))
           uniformM44 uModel               model
           uniformV4  uDiffuse             (cube ^. cubColor)
-          glDrawElements GL_TRIANGLES (vertCount (geometry cubeEntity)) GL_UNSIGNED_INT nullPtr
+          glDrawElements GL_TRIANGLES (vertCount (sGeometry cubeShape)) GL_UNSIGNED_INT nullPtr
 
-      swapBuffers window
+      swapBuffers gpWindow
