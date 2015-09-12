@@ -9,14 +9,14 @@ module Types where
 
 import Graphics.GL.Pal
 import Graphics.GL
-import Game.Pal
+
 import Data.Data
 import Linear
 import Physics.Bullet
 
 import Control.Lens
 
-import Data.Map (Map)
+
 
 type ObjectID = Int
 
@@ -26,11 +26,7 @@ data Cube = Cube
   }
 makeLenses ''Cube
 
-data World = World
-  { _wldPlayer :: Pose
-  , _wldCubes  :: Map ObjectID Cube
-  }
-makeLenses ''World
+
 
 data Uniforms = Uniforms
   { uModelViewProjection :: UniformLocation (M44 GLfloat)
@@ -40,7 +36,4 @@ data Uniforms = Uniforms
   , uDiffuse             :: UniformLocation (V4  GLfloat)
   } deriving (Data)
 
-newWorld :: World
-newWorld = World
-    (Pose (V3 0 20 60) (axisAngle (V3 0 1 0) 0))
-    mempty
+

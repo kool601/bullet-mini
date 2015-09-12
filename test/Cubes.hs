@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts, LambdaCase, RecordWildCards #-}
+{-# LANGUAGE TemplateHaskell #-}
 import Graphics.UI.GLFW.Pal
 import Graphics.GL.Pal
 import Graphics.GL
@@ -14,6 +15,15 @@ import Data.Map (Map)
 import Types
 
 import Physics.Bullet
+
+data World = World
+  { _wldPlayer :: Pose
+  }
+makeLenses ''World
+
+newWorld :: World
+newWorld = World
+    (Pose (V3 0 20 60) (axisAngle (V3 0 1 0) 0))
 
 main :: IO ()
 main = do
@@ -36,6 +46,7 @@ main = do
   glEnable GL_DEPTH_TEST
 
   glClearColor 0 0 0.1 1
+
   void . flip runStateT newWorld . whileWindow gpWindow $ do
     processEvents gpEvents $ \e -> do
       closeOnEscape gpWindow e

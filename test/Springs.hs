@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts, LambdaCase, RecordWildCards #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 import Graphics.UI.GLFW.Pal
 import Graphics.GL.Pal
@@ -11,11 +12,19 @@ import Control.Monad
 import Control.Monad.State
 import Control.Lens
 import qualified Data.Map as Map
+import Data.Map (Map)
 import Data.Maybe
 
 import Types
 
 import Halive.Utils
+
+data World = World
+  { _wldPlayer :: Pose
+  , _wldCubes  :: Map ObjectID Cube
+  , _wldFrames :: Int
+  }
+makeLenses ''World
 
 main :: IO ()
 main = do
@@ -30,15 +39,14 @@ main = do
 
   let Uniforms{..} = sUniforms cubeShape
   useProgram (sProgram cubeShape)
-  
-
   glEnable GL_DEPTH_TEST
-
   glClearColor 0 0 0.1 1
 
   let initialWorld = World
-            (Pose (V3 0 20 40) (axisAngle (V3 0 1 0) 0))
-            mempty
+        { _wldPlayer = Pose (V3 0 20 40) (axisAngle (V3 0 1 0) 0)
+        , _wldCubes  = mempty
+        , _wldFrames = 0
+        }
   void . flip runStateT initialWorld $ do
     -- Add a falling cube
     rigidBody<- addCube dynamicsWorld (RigidBodyID 11) mempty 

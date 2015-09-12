@@ -1,4 +1,6 @@
 {-# LANGUAGE FlexibleContexts, LambdaCase, RecordWildCards #-}
+{-# LANGUAGE TemplateHaskell #-}
+
 import Graphics.UI.GLFW.Pal
 import Graphics.GL.Pal
 import Graphics.GL
@@ -9,12 +11,25 @@ import Control.Monad
 import Control.Monad.State
 import Control.Lens
 import qualified Data.Map as Map
+import Data.Map (Map)
 
 import Data.Maybe
 
 import Types
 
 import Physics.Bullet
+import Control.Lens
+
+data World = World
+  { _wldPlayer :: Pose
+  , _wldCubes  :: Map ObjectID Cube
+  }
+makeLenses ''World
+
+newWorld :: World
+newWorld = World
+    (Pose (V3 0 20 60) (axisAngle (V3 0 1 0) 0))
+    mempty
 
 main :: IO ()
 main = do
