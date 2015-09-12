@@ -7,11 +7,9 @@ import Linear
 
 import Control.Monad
 import Control.Monad.State
-import System.Random
 import Control.Lens
 import Data.Maybe
 import Data.Map (Map)
-import Control.Monad.Random
 
 import Types
 

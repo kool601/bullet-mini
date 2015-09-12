@@ -1,4 +1,4 @@
-{-# LANGUAGE TemplateHaskell #-}
+ {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -73,6 +73,8 @@ instance Monoid PhysicsWorldConfig where
 newtype DynamicsWorld = DynamicsWorld { unDynamicsWorld :: Ptr () }
 newtype RigidBody     = RigidBody     { unRigidBody     :: Ptr () } deriving Show
 newtype RigidBodyID   = RigidBodyID   { unRigidBodyID   :: CInt   } deriving Show
+
+newtype SpringConstraint = SpringConstraint { unSpringConstraint :: Ptr () } deriving Show
 
 createDynamicsWorld :: (Functor m, MonadIO m) =>  PhysicsWorldConfig -> m DynamicsWorld 
 createDynamicsWorld PhysicsWorldConfig{..} = DynamicsWorld <$> liftIO [C.block| void * {
@@ -203,10 +205,13 @@ applyCentralForce (RigidBody rigidBody) force = liftIO [C.block| void {
   btVector3 force = btVector3( $(float x) , $(float y) , $(float z) );
   rigidBody -> applyCentralImpulse( force );
 
-  } |]
+  }|]
   where
     (V3 x y z) = realToFrac <$> force
 
+
+
+  
 
 stepSimulation :: MonadIO m => DynamicsWorld -> m ()
 stepSimulation (DynamicsWorld dynamicsWorld) = liftIO [C.block| void {
@@ -377,3 +382,168 @@ setRigidBodyWorldTransform (RigidBody rigidBody) position rotation = liftIO [C.b
   where
     (V3 x y z)                    = realToFrac <$> position
     (Quaternion qw (V3 qx qy qz)) = realToFrac <$> rotation
+
+
+-----------------
+-- Springs
+-- See http://bulletphysics.org/Bullet/BulletFull/classbtGeneric6DofSpring2Constraint.html
+-----------------
+
+-- | Adds a constraint between the body and (I think) its current position in the world
+addWorldSpringConstraint (DynamicsWorld dynamicsWorld) (RigidBody rigidBody) = SpringConstraint <$> liftIO [C.block| void* {
+  btDiscreteDynamicsWorld* dynamicsWorld = (btDiscreteDynamicsWorld *) $( void *dynamicsWorld );
+
+  btRigidBody* rigidBody = (btRigidBody *) $(void *rigidBody);
+
+  btQuaternion q     = btQuaternion( btVector3(0,1,0), 0 );
+  btVector3    p     = btVector3( 0,0,0 );
+  btTransform  frame = btTransform( q , p );
+
+  btGeneric6DofSpring2Constraint *spring = new btGeneric6DofSpring2Constraint(*rigidBody, frame, RO_XYZ);
+
+  dynamicsWorld->addConstraint(spring);
+
+  return spring;
+
+  }|]
+
+addSpringConstraint (DynamicsWorld dynamicsWorld) (RigidBody rigidBodyA) (RigidBody rigidBodyB) = SpringConstraint <$> liftIO [C.block| void * {
+  btDiscreteDynamicsWorld* dynamicsWorld = (btDiscreteDynamicsWorld *) $( void *dynamicsWorld );
+  btRigidBody* rigidBodyA = (btRigidBody *) $(void *rigidBodyA);
+  btRigidBody* rigidBodyB = (btRigidBody *) $(void *rigidBodyB);
+
+  btQuaternion q     = btQuaternion( btVector3(0,1,0), 0 );
+  btVector3    p     = btVector3( 0,0,0 );
+  btTransform  frame = btTransform( q , p );
+
+  RotateOrder rotOrder = RO_XYZ;
+  btGeneric6DofSpring2Constraint *spring = new btGeneric6DofSpring2Constraint(
+      *rigidBodyA, *rigidBodyB,
+      frame, frame,
+      RO_XYZ
+      );
+
+  return spring;
+  }|]
+
+setSpringLinearLowerLimit (SpringConstraint springConstraint) (V3 x y z) = liftIO [C.block| void {
+  btGeneric6DofSpring2Constraint* spring = (btGeneric6DofSpring2Constraint *) $( void *springConstraint );
+
+  spring->setLinearLowerLimit(btVector3( $(float x), $(float y), $(float z)));
+
+  }|]
+
+setSpringLinearUpperLimit (SpringConstraint springConstraint) (V3 x y z) = liftIO [C.block| void {
+  btGeneric6DofSpring2Constraint* spring = (btGeneric6DofSpring2Constraint *) $( void *springConstraint );
+
+  spring->setLinearUpperLimit(btVector3($(float x), $(float y), $(float z)));
+
+  }|]
+
+setSpringAngularLowerLimit (SpringConstraint springConstraint) (V3 x y z) = liftIO [C.block| void {
+  btGeneric6DofSpring2Constraint* spring = (btGeneric6DofSpring2Constraint *) $( void *springConstraint );
+
+  spring->setAngularLowerLimit(btVector3($(float x), $(float y), $(float z)));
+
+  }|]
+
+setSpringAngularUpperLimit (SpringConstraint springConstraint) (V3 x y z) = liftIO [C.block| void {
+  btGeneric6DofSpring2Constraint* spring = (btGeneric6DofSpring2Constraint *) $( void *springConstraint );
+
+  spring->setAngularUpperLimit(btVector3($(float x), $(float y), $(float z)));
+
+  }|]
+
+setSpringLinearBounce (SpringConstraint springConstraint) (V3 x y z) = liftIO [C.block| void {
+  btGeneric6DofSpring2Constraint* spring = (btGeneric6DofSpring2Constraint *) $( void *springConstraint );
+
+  spring->setBounce(0, $(float x));
+  spring->setBounce(1, $(float y));
+  spring->setBounce(2, $(float z));
+
+  }|]
+
+setSpringAngularBounce (SpringConstraint springConstraint) (V3 x y z) = liftIO [C.block| void {
+  btGeneric6DofSpring2Constraint* spring = (btGeneric6DofSpring2Constraint *) $( void *springConstraint );
+
+  spring->setBounce(3, $(float x));
+  spring->setBounce(4, $(float y));
+  spring->setBounce(5, $(float z));
+
+  }|]
+
+setSpringLinearStiffness (SpringConstraint springConstraint) (V3 x y z) = liftIO [C.block| void {
+  btGeneric6DofSpring2Constraint* spring = (btGeneric6DofSpring2Constraint *) $( void *springConstraint );
+
+  spring->setStiffness(0, $(float x));
+  spring->setStiffness(1, $(float y));
+  spring->setStiffness(2, $(float z));
+
+  }|]
+
+setSpringAngularStiffness (SpringConstraint springConstraint) (V3 x y z) = liftIO [C.block| void {
+  btGeneric6DofSpring2Constraint* spring = (btGeneric6DofSpring2Constraint *) $( void *springConstraint );
+
+  spring->setStiffness(3, $(float x));
+  spring->setStiffness(4, $(float y));
+  spring->setStiffness(5, $(float z));
+
+  }|]
+
+setSpringLinearDamping (SpringConstraint springConstraint) (V3 x y z) = liftIO [C.block| void {
+  btGeneric6DofSpring2Constraint* spring = (btGeneric6DofSpring2Constraint *) $( void *springConstraint );
+
+  spring->setDamping(0, $(float x));
+  spring->setDamping(1, $(float y));
+  spring->setDamping(2, $(float z));
+
+  }|]
+
+setSpringAngularDamping (SpringConstraint springConstraint) (V3 x y z) = liftIO [C.block| void {
+  btGeneric6DofSpring2Constraint* spring = (btGeneric6DofSpring2Constraint *) $( void *springConstraint );
+
+  spring->setDamping(3, $(float x));
+  spring->setDamping(4, $(float y));
+  spring->setDamping(5, $(float z));
+
+  }|]
+
+setSpringLinearEquilibrium (SpringConstraint springConstraint) (V3 x y z) = liftIO [C.block| void {
+  btGeneric6DofSpring2Constraint* spring = (btGeneric6DofSpring2Constraint *) $( void *springConstraint );
+
+  spring->setEquilibriumPoint(0, $(float x));
+  spring->setEquilibriumPoint(1, $(float y));
+  spring->setEquilibriumPoint(2, $(float z));
+
+  }|]
+
+setSpringAngularEquilibrium (SpringConstraint springConstraint) (V3 x y z) = liftIO [C.block| void {
+  btGeneric6DofSpring2Constraint* spring = (btGeneric6DofSpring2Constraint *) $( void *springConstraint );
+
+  spring->setEquilibriumPoint(3, $(float x));
+  spring->setEquilibriumPoint(4, $(float y));
+  spring->setEquilibriumPoint(5, $(float z));
+
+  }|]
+
+setLinearSpringEnabled :: MonadIO m => SpringConstraint -> V3 Bool -> m ()
+setLinearSpringEnabled (SpringConstraint springConstraint) (V3 x y z) = liftIO [C.block| void {
+  btGeneric6DofSpring2Constraint* spring = (btGeneric6DofSpring2Constraint *) $( void *springConstraint );
+
+  spring->enableSpring(0, $(int x'));
+  spring->enableSpring(1, $(int y'));
+  spring->enableSpring(2, $(int z'));
+
+  }|]
+  where V3 x' y' z' = fromIntegral . fromEnum <$> V3 x y z
+
+setAngularSpringEnabled :: MonadIO m => SpringConstraint -> V3 Bool -> m ()
+setAngularSpringEnabled (SpringConstraint springConstraint) (V3 x y z) = liftIO [C.block| void {
+  btGeneric6DofSpring2Constraint* spring = (btGeneric6DofSpring2Constraint *) $( void *springConstraint );
+
+  spring->enableSpring(3, $(int x'));
+  spring->enableSpring(4, $(int y'));
+  spring->enableSpring(5, $(int z'));
+
+  }|]
+  where V3 x' y' z' = fromIntegral . fromEnum <$> V3 x y z

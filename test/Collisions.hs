@@ -16,8 +16,6 @@ import Types
 
 import Physics.Bullet
 
-
-
 main :: IO ()
 main = do
   GamePal{..} <- initGamePal "Bullet" []
