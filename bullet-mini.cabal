@@ -19,6 +19,8 @@ cabal-version:       >=1.10
 executable cubes
   main-is:             Cubes.hs
   hs-source-dirs:      test, test/shared
+  if os(windows)
+    buildable: False
   default-language:    Haskell2010
   other-modules:
     Types
@@ -31,6 +33,8 @@ executable cubes
 executable collisions
   main-is:             Collisions.hs
   hs-source-dirs:      test, test/shared
+  if os(windows)
+    buildable: False
   default-language:    Haskell2010
   other-modules:
     Types
@@ -54,6 +58,8 @@ executable springs
     , halive
 
 executable memory
+  if os(windows)
+    buildable: False
   build-depends:
     base,
     bullet-mini,
