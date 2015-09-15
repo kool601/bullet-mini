@@ -70,9 +70,9 @@ instance Monoid PhysicsWorldConfig where
         }
   mappend _ b = b
 
-newtype DynamicsWorld = DynamicsWorld { unDynamicsWorld :: Ptr () }
-newtype RigidBody     = RigidBody     { unRigidBody     :: Ptr () } deriving Show
-newtype RigidBodyID   = RigidBodyID   { unRigidBodyID   :: CInt   } deriving Show
+newtype DynamicsWorld    = DynamicsWorld { unDynamicsWorld :: Ptr () }
+newtype RigidBody        = RigidBody     { unRigidBody     :: Ptr () } deriving Show
+newtype RigidBodyID      = RigidBodyID   { unRigidBodyID   :: CInt   } deriving (Eq, Show, Ord)
 
 newtype SpringConstraint = SpringConstraint { unSpringConstraint :: Ptr () } deriving Show
 
@@ -422,6 +422,8 @@ addSpringConstraint (DynamicsWorld dynamicsWorld) (RigidBody rigidBodyA) (RigidB
       frame, frame,
       RO_XYZ
       );
+  
+  dynamicsWorld->addConstraint(spring);
 
   return spring;
   }|]
