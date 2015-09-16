@@ -230,20 +230,21 @@ getRigidBodyID (RigidBody rigidBody) = liftIO $
     }|]
 
 data Collision = Collision
-  { cbBodyA :: !RigidBody
-  , cbBodyB :: !RigidBody
-  , cbBodyAID :: !RigidBodyID
-  , cbBodyBID :: !RigidBodyID
-  , cbPositionOnA :: !(V3 Float)
-  , cbPositionOnB :: !(V3 Float)
-  , cbNormalOnB   :: !(V3 Float)
+  { cbBodyA          :: !RigidBody
+  , cbBodyB          :: !RigidBody
+  , cbBodyAID        :: !RigidBodyID
+  , cbBodyBID        :: !RigidBodyID
+  , cbPositionOnA    :: !(V3 Float)
+  , cbPositionOnB    :: !(V3 Float)
+  , cbNormalOnB      :: !(V3 Float)
+  , cbAppliedImpulse :: !Float
   } deriving Show
 
 getCollisions :: MonadIO m => DynamicsWorld -> m [Collision]
 getCollisions (DynamicsWorld dynamicsWorld) = liftIO $ do
 
   collisionsRef <- newIORef []
-  let captureCollision objA objB objAID objBID aX aY aZ bX bY bZ nX nY nZ = do
+  let captureCollision objA objB objAID objBID aX aY aZ bX bY bZ nX nY nZ impulse = do
         let collision = Collision
               { cbBodyA = RigidBody objA
               , cbBodyB = RigidBody objB
@@ -252,6 +253,7 @@ getCollisions (DynamicsWorld dynamicsWorld) = liftIO $ do
               , cbPositionOnA = V3 (realToFrac aX) (realToFrac aY) (realToFrac aZ)
               , cbPositionOnB = V3 (realToFrac bX) (realToFrac bY) (realToFrac bZ)
               , cbNormalOnB   = V3 (realToFrac nX) (realToFrac nY) (realToFrac nZ)
+              , cbAppliedImpulse = realToFrac impulse
               }
         modifyIORef collisionsRef (collision:)
 
@@ -279,7 +281,9 @@ getCollisions (DynamicsWorld dynamicsWorld) = liftIO $ do
           const btVector3& ptB         = pt.getPositionWorldOnB();
           const btVector3& nmB         = pt.m_normalWorldOnB;
 
-          $fun:(void (*captureCollision)(void*, void*, int, int, float, float, float, float, float, float, float, float, float))(
+          btScalar impulse = pt.getAppliedImpulse();
+
+          $fun:(void (*captureCollision)(void*, void*, int, int, float, float, float, float, float, float, float, float, float, float))(
             (void *)obA,
             (void *)obB,
             obA->getUserIndex(),
@@ -292,7 +296,8 @@ getCollisions (DynamicsWorld dynamicsWorld) = liftIO $ do
             ptB.getZ(),
             nmB.getX(),
             nmB.getY(),
-            nmB.getZ()
+            nmB.getZ(),
+            impulse
             );
         }
       } 
@@ -390,6 +395,7 @@ setRigidBodyWorldTransform (RigidBody rigidBody) position rotation = liftIO [C.b
 -----------------
 
 -- | Adds a constraint between the body and (I think) its current position in the world
+addWorldSpringConstraint :: MonadIO m => DynamicsWorld -> RigidBody -> m SpringConstraint
 addWorldSpringConstraint (DynamicsWorld dynamicsWorld) (RigidBody rigidBody) = SpringConstraint <$> liftIO [C.block| void* {
   btDiscreteDynamicsWorld* dynamicsWorld = (btDiscreteDynamicsWorld *) $( void *dynamicsWorld );
 
@@ -407,6 +413,7 @@ addWorldSpringConstraint (DynamicsWorld dynamicsWorld) (RigidBody rigidBody) = S
 
   }|]
 
+addSpringConstraint :: MonadIO m => DynamicsWorld -> RigidBody -> RigidBody -> m SpringConstraint
 addSpringConstraint (DynamicsWorld dynamicsWorld) (RigidBody rigidBodyA) (RigidBody rigidBodyB) = SpringConstraint <$> liftIO [C.block| void * {
   btDiscreteDynamicsWorld* dynamicsWorld = (btDiscreteDynamicsWorld *) $( void *dynamicsWorld );
   btRigidBody* rigidBodyA = (btRigidBody *) $(void *rigidBodyA);
@@ -428,6 +435,7 @@ addSpringConstraint (DynamicsWorld dynamicsWorld) (RigidBody rigidBodyA) (RigidB
   return spring;
   }|]
 
+setSpringLinearLowerLimit :: MonadIO m => SpringConstraint -> V3 CFloat -> m ()
 setSpringLinearLowerLimit (SpringConstraint springConstraint) (V3 x y z) = liftIO [C.block| void {
   btGeneric6DofSpring2Constraint* spring = (btGeneric6DofSpring2Constraint *) $( void *springConstraint );
 
@@ -435,6 +443,7 @@ setSpringLinearLowerLimit (SpringConstraint springConstraint) (V3 x y z) = liftI
 
   }|]
 
+setSpringLinearUpperLimit :: MonadIO m => SpringConstraint -> V3 CFloat -> m ()
 setSpringLinearUpperLimit (SpringConstraint springConstraint) (V3 x y z) = liftIO [C.block| void {
   btGeneric6DofSpring2Constraint* spring = (btGeneric6DofSpring2Constraint *) $( void *springConstraint );
 
@@ -442,6 +451,7 @@ setSpringLinearUpperLimit (SpringConstraint springConstraint) (V3 x y z) = liftI
 
   }|]
 
+setSpringAngularLowerLimit :: MonadIO m => SpringConstraint -> V3 CFloat -> m ()
 setSpringAngularLowerLimit (SpringConstraint springConstraint) (V3 x y z) = liftIO [C.block| void {
   btGeneric6DofSpring2Constraint* spring = (btGeneric6DofSpring2Constraint *) $( void *springConstraint );
 
@@ -449,6 +459,7 @@ setSpringAngularLowerLimit (SpringConstraint springConstraint) (V3 x y z) = lift
 
   }|]
 
+setSpringAngularUpperLimit :: MonadIO m => SpringConstraint -> V3 CFloat -> m ()
 setSpringAngularUpperLimit (SpringConstraint springConstraint) (V3 x y z) = liftIO [C.block| void {
   btGeneric6DofSpring2Constraint* spring = (btGeneric6DofSpring2Constraint *) $( void *springConstraint );
 
@@ -456,6 +467,7 @@ setSpringAngularUpperLimit (SpringConstraint springConstraint) (V3 x y z) = lift
 
   }|]
 
+setSpringLinearBounce :: MonadIO m => SpringConstraint -> V3 CFloat -> m ()
 setSpringLinearBounce (SpringConstraint springConstraint) (V3 x y z) = liftIO [C.block| void {
   btGeneric6DofSpring2Constraint* spring = (btGeneric6DofSpring2Constraint *) $( void *springConstraint );
 
@@ -465,6 +477,8 @@ setSpringLinearBounce (SpringConstraint springConstraint) (V3 x y z) = liftIO [C
 
   }|]
 
+
+setSpringAngularBounce :: MonadIO m => SpringConstraint -> V3 CFloat -> m ()
 setSpringAngularBounce (SpringConstraint springConstraint) (V3 x y z) = liftIO [C.block| void {
   btGeneric6DofSpring2Constraint* spring = (btGeneric6DofSpring2Constraint *) $( void *springConstraint );
 
@@ -474,6 +488,7 @@ setSpringAngularBounce (SpringConstraint springConstraint) (V3 x y z) = liftIO [
 
   }|]
 
+setSpringLinearStiffness :: MonadIO m => SpringConstraint -> V3 CFloat -> m ()
 setSpringLinearStiffness (SpringConstraint springConstraint) (V3 x y z) = liftIO [C.block| void {
   btGeneric6DofSpring2Constraint* spring = (btGeneric6DofSpring2Constraint *) $( void *springConstraint );
 
@@ -483,6 +498,7 @@ setSpringLinearStiffness (SpringConstraint springConstraint) (V3 x y z) = liftIO
 
   }|]
 
+setSpringAngularStiffness :: MonadIO m => SpringConstraint -> V3 CFloat -> m ()
 setSpringAngularStiffness (SpringConstraint springConstraint) (V3 x y z) = liftIO [C.block| void {
   btGeneric6DofSpring2Constraint* spring = (btGeneric6DofSpring2Constraint *) $( void *springConstraint );
 
@@ -492,6 +508,7 @@ setSpringAngularStiffness (SpringConstraint springConstraint) (V3 x y z) = liftI
 
   }|]
 
+setSpringLinearDamping :: MonadIO m => SpringConstraint -> V3 CFloat -> m ()
 setSpringLinearDamping (SpringConstraint springConstraint) (V3 x y z) = liftIO [C.block| void {
   btGeneric6DofSpring2Constraint* spring = (btGeneric6DofSpring2Constraint *) $( void *springConstraint );
 
@@ -501,6 +518,7 @@ setSpringLinearDamping (SpringConstraint springConstraint) (V3 x y z) = liftIO [
 
   }|]
 
+setSpringAngularDamping :: MonadIO m => SpringConstraint -> V3 CFloat -> m ()
 setSpringAngularDamping (SpringConstraint springConstraint) (V3 x y z) = liftIO [C.block| void {
   btGeneric6DofSpring2Constraint* spring = (btGeneric6DofSpring2Constraint *) $( void *springConstraint );
 
@@ -510,6 +528,7 @@ setSpringAngularDamping (SpringConstraint springConstraint) (V3 x y z) = liftIO 
 
   }|]
 
+setSpringLinearEquilibrium :: MonadIO m => SpringConstraint -> V3 CFloat -> m ()
 setSpringLinearEquilibrium (SpringConstraint springConstraint) (V3 x y z) = liftIO [C.block| void {
   btGeneric6DofSpring2Constraint* spring = (btGeneric6DofSpring2Constraint *) $( void *springConstraint );
 
@@ -519,6 +538,7 @@ setSpringLinearEquilibrium (SpringConstraint springConstraint) (V3 x y z) = lift
 
   }|]
 
+setSpringAngularEquilibrium :: MonadIO m => SpringConstraint -> V3 CFloat -> m ()
 setSpringAngularEquilibrium (SpringConstraint springConstraint) (V3 x y z) = liftIO [C.block| void {
   btGeneric6DofSpring2Constraint* spring = (btGeneric6DofSpring2Constraint *) $( void *springConstraint );
 

@@ -72,16 +72,15 @@ main = do
       stepSimulation dynamicsWorld
 
       -- Set all cubes to white
-      cubeIDs <- Map.keys <$> use wldCubes
-      forM_ cubeIDs $ \cubeID -> 
-        wldCubes . at cubeID . traverse . cubColor .= V4 1 1 1 1
+      wldCubes . traverse . cubColor .= V4 1 1 1 1
       -- Set all colliding cubes to green
       collisions <- getCollisions dynamicsWorld
       forM_ collisions $ \collision -> do
         let bodyAID = (fromIntegral . unRigidBodyID . cbBodyAID) collision
-        wldCubes . at bodyAID . traverse . cubColor .= V4 0 1 0 1
-        let bodyBID = (fromIntegral . unRigidBodyID . cbBodyBID) collision
-        wldCubes . at bodyBID . traverse . cubColor .= V4 0 1 0 1
+            bodyBID = (fromIntegral . unRigidBodyID . cbBodyBID) collision
+            appliedImpulse = cbAppliedImpulse collision
+        wldCubes . at bodyAID . traverse . cubColor .= V4 1 appliedImpulse 1 1
+        wldCubes . at bodyBID . traverse . cubColor .= V4 1 appliedImpulse 1 1
 
 
       projMat <- makeProjection gpWindow

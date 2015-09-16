@@ -52,7 +52,7 @@ executable springs
     Types
   ghc-options: -Wall -O2
   build-depends:
-    base, bullet-mini,
+    base, bullet-mini, time,
     gl, gl-pal, game-pal, glfw-pal, 
     linear, lens, mtl, containers
     , halive
