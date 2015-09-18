@@ -1,8 +1,3 @@
-{-# LANGUAGE CPP #-}
-#ifdef mingw32_HOST_OS
-{-# OPTIONS_GHC -F -pgmF strip-ths #-}
-#endif
-
 {-# LANGUAGE TemplateHaskell, FlexibleContexts, LambdaCase, DeriveDataTypeable #-}
 
 module Types where
