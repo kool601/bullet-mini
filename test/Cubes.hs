@@ -47,9 +47,16 @@ main = do
 
   glClearColor 0 0 0.1 1
 
+
   void . flip runStateT newWorld . whileWindow gpWindow $ do
     processEvents gpEvents $ \e -> do
-      closeOnEscape gpWindow e
+      case e of
+        (MouseButton _ _ _) -> do mcubeId <- mapM getRigidBodyID =<< rayTestClosest dynamicsWorld =<< posToRay =<< getCursorPos gpWindow
+                                  case mcubeId of
+                                    (Just cubeId) -> liftIO $ putStrLn $ "Clicked Cube " ++ (show (unRigidBodyID cubeId))
+                                    otherwise -> return ()
+        otherwise           -> closeOnEscape gpWindow e
+        
     applyMouseLook gpWindow wldPlayer
     applyWASD gpWindow wldPlayer        
 
@@ -76,3 +83,9 @@ main = do
         glDrawElements GL_TRIANGLES (vertCount (sGeometry cubeShape)) GL_UNSIGNED_INT nullPtr
 
     swapBuffers gpWindow
+
+
+posToRay (x, y) = do
+  pose <- use wldPlayer
+  let position = pose ^. posPosition
+  return $ Ray position (rotate (pose ^. posOrientation) (position & _z -~ 1000))
