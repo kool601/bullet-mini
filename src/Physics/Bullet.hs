@@ -134,7 +134,7 @@ addStaticPlane (DynamicsWorld dynamicsWorld) (RigidBodyID rigidBodyID) PhysicsCo
     // Attach the given RigidBodyID
     rigidBody         -> setUserIndex( $(int rigidBodyID) );
 
-    dynamicsWorld     -> addRigidBody( rigidBody );
+    dynamicsWorld     -> addRigidBody( rigidBody, $(short int pcCollisionGroup), $(short int pcCollisionMask) );
 
     return rigidBody;
 
