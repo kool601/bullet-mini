@@ -400,13 +400,30 @@ destroyDynamicsWorld (DynamicsWorld dynamicsWorld) = [C.block| void {
   //delete broadphase;
 } |]
 
+setRigidBodyActive :: MonadIO m => RigidBody -> m ()
+setRigidBodyActive (RigidBody rigidBody)  = liftIO [C.block| void {
+  btRigidBody *rigidBody     = (btRigidBody *) $(void *rigidBody);
+  rigidBody->activate();
+  }|]
 
 setRigidBodyKinematic :: MonadIO m => RigidBody -> m ()
 setRigidBodyKinematic (RigidBody rigidBody)  = liftIO [C.block| void {
   btRigidBody *rigidBody     = (btRigidBody *) $(void *rigidBody);
   rigidBody->setCollisionFlags(rigidBody->getCollisionFlags() | btCollisionObject::CF_KINEMATIC_OBJECT);
+  // Bullet docs recommend always disabling deactivation for kinematic objects
   rigidBody->setActivationState(DISABLE_DEACTIVATION);
   }|]
+
+-- -- | Allows disabling bullet's "sleep" feature (which is on by default)
+-- setRigidBodyAllowDeactivation :: MonadIO m => RigidBody -> Bool -> m ()
+-- setRigidBodyAllowDeactivation (RigidBody rigidBody) state = liftIO [C.block| void {
+--   btRigidBody *rigidBody     = (btRigidBody *) $(void *rigidBody);
+--   if ( $(bool state) ) {
+--     rigidBody->setActivationState(ENABLE_DEACTIVATION);
+--   } else {
+--     rigidBody->setActivationState(DISABLE_DEACTIVATION);
+--   }
+--   }|]
 
 setRigidBodyWorldTransform :: (Real a, MonadIO m) => RigidBody -> V3 a -> Quaternion a -> m ()
 setRigidBodyWorldTransform (RigidBody rigidBody) position rotation = liftIO [C.block| void {
