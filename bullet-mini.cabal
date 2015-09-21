@@ -97,6 +97,26 @@ executable lasso
                      , containers
                      , halive
 
+executable vacuum
+  main-is:             Vacuum.hs
+  hs-source-dirs:      test, test/shared
+  default-language:    Haskell2010
+  other-modules:       Types
+                       CubeUniforms
+  ghc-options:         -Wall -O2
+  build-depends:       base
+                     , bullet-mini
+                     , time
+                     , gl
+                     , gl-pal
+                     , game-pal
+                     , glfw-pal
+                     , linear-extra
+                     , lens-extra
+                     , mtl
+                     , containers
+                     , halive
+
 executable memory
   if os(windows)
     buildable: False

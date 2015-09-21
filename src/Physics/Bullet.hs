@@ -56,8 +56,8 @@ instance Monoid PhysicsConfig where
         , pcMass        = 1
         , pcRestitution = 0.5
         , pcYPos        = 0
-        , pcCollisionGroup = 0
-        , pcCollisionMask  = 0
+        , pcCollisionGroup = 1
+        , pcCollisionMask  = 1
         }
   mappend _ b = b
 
@@ -214,8 +214,8 @@ setCubeScale (RigidBody rigidBody) scale = liftIO [C.block| void {
   where
     (V3 x y z) = realToFrac <$> scale
 
-applyCentralForce :: (Functor m, MonadIO m, Real a) => RigidBody -> V3 a -> m ()
-applyCentralForce (RigidBody rigidBody) force = liftIO [C.block| void {
+applyCentralImpulse :: (Functor m, MonadIO m, Real a) => RigidBody -> V3 a -> m ()
+applyCentralImpulse (RigidBody rigidBody) force = liftIO [C.block| void {
 
   btRigidBody* rigidBody = (btRigidBody *) $(void *rigidBody);
 
@@ -225,9 +225,6 @@ applyCentralForce (RigidBody rigidBody) force = liftIO [C.block| void {
   }|]
   where
     (V3 x y z) = realToFrac <$> force
-
-
-
   
 
 stepSimulation :: MonadIO m => DynamicsWorld -> m ()
