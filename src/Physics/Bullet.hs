@@ -180,7 +180,7 @@ addCube (DynamicsWorld dynamicsWorld) (RigidBodyID rigidBodyID) PhysicsConfig{..
     } |]
   where
     (V3 x y z)                    = realToFrac <$> pcPosition
-    (V3 sx sy sz)                 = realToFrac <$> pcScale
+    (V3 sx sy sz)                 = realToFrac <$> pcScale * 0.5 -- bullet uses 1/2 extents
     (V3 ix iy iz)                 = realToFrac <$> pcInertia
     (Quaternion qw (V3 qx qy qz)) = realToFrac <$> pcRotation
     r                             = realToFrac     pcRestitution
