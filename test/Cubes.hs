@@ -63,7 +63,7 @@ main = do
       
       processEvents gpEvents $ \e -> do
         case e of
-          (MouseButton _ _ _) -> do mBodyID <- mapM getRigidBodyID =<< rayTestClosest dynamicsWorld =<< posToRay =<< getCursorPos gpWindow
+          (MouseButton _ _ _) -> do mBodyID <- mapM getRigidBodyID =<< rayTestClosest dynamicsWorld =<< posToRay gpWindow =<< getCursorPos gpWindow
                                     case mBodyID of
                                       Nothing -> return ()
                                       Just bodyID -> do
@@ -103,7 +103,7 @@ main = do
       swapBuffers gpWindow
 
 
-posToRay (x, y) = do
+posToRay win (x,y) = do
   pose <- use wldPlayer
-  let position = pose ^. posPosition
-  return $ Ray position (rotate (pose ^. posOrientation) (position & _z -~ 1000))
+  (start, end) <- windowPosToWorldRay win pose (fromRational (toRational x), fromRational (toRational y))
+  return (Ray start end)
