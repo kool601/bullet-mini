@@ -86,6 +86,7 @@ main = do
             -- let magnitude = distance position target
             let orientation = normalize (target - (position :: V3 GLfloat)) :: V3 GLfloat
             --let v = rotate (cube ^. cubPose . posOrientation) ( V3 0 0 ( -3 ) )
+            setRigidBodyActive (cube ^. cubBody)
             _ <- applyCentralImpulse (cube ^. cubBody) orientation
             return ()
 
