@@ -24,19 +24,33 @@ import Halive.Utils
 data World = World
   { _wldPlayer :: Pose
   , _wldCubes  :: Map ObjectID Cube
-  , _wldFrames :: Int
   }
 makeLenses ''World
+
+tuneSpring spring = do
+  setSpringLinearLowerLimit spring (-5)
+  setSpringLinearUpperLimit spring 5
+  setSpringAngularLowerLimit spring (-1)
+  setSpringAngularUpperLimit spring 1
+  setSpringAngularStiffness spring 100
+  setSpringLinearStiffness spring 100
+  setSpringLinearDamping spring 0.9
+  setSpringAngularDamping spring 0.9
+  setSpringLinearBounce spring 10
+  setSpringAngularBounce spring 10
+  setSpringLinearEquilibrium spring 0
+  setSpringAngularEquilibrium spring 0
+  setLinearSpringEnabled spring (V3 True True True)
+  setAngularSpringEnabled spring (V3 True True True)
 
 main :: IO ()
 main = do
   GamePal{..}    <- reacquire 0 $ initGamePal "Bullet" NoGCPerFrame []
 
   dynamicsWorld  <- createDynamicsWorld mempty
-  
 
   cubeProg       <- createShaderProgram "test/shared/cube.vert" "test/shared/cube.frag"
-  cubeGeo        <- cubeGeometry (2 :: V3 GLfloat) (V3 1 1 1)
+  cubeGeo        <- cubeGeometry (1 :: V3 GLfloat) (V3 1 1 1)
   cubeShape      <- makeShape cubeGeo cubeProg
 
   let Uniforms{..} = sUniforms cubeShape
@@ -47,7 +61,6 @@ main = do
   let initialWorld = World
         { _wldPlayer = Pose (V3 0 20 40) (axisAngle (V3 0 1 0) 0)
         , _wldCubes  = mempty
-        , _wldFrames = 0
         }
   void . flip runStateT initialWorld $ do
 
@@ -64,42 +77,17 @@ main = do
         }
     setRigidBodyKinematic movingRigidBody
 
-    -- Add a falling cube
-    fallingRigidBody <- addCube dynamicsWorld (RigidBodyID 11) mempty 
-        { pcPosition = V3 0 50 0
-        , pcRotation = Quaternion 0 (V3 0 1 0)
-        }
-    wldCubes . at 11 ?= Cube
-        { _cubBody = fallingRigidBody
-        , _cubColor = V4 1 1 1 1
-        }
-
-    -- Add a row of cubes attached to worldspace spring constraints
-    forM_ [1..10] $ \i -> do
-      springRigidBody <- addCube dynamicsWorld (RigidBodyID i) mempty 
-        { pcPosition = V3 (-fromIntegral i * 2.1 + 11) 20 0
-        , pcRotation = Quaternion 0 (V3 0 1 0)
-        }
-      wldCubes . at (fromIntegral i) ?= Cube
-        { _cubBody = springRigidBody
-        , _cubColor = V4 1 1 1 1
-        }
-      spring <- addWorldSpringConstraint dynamicsWorld springRigidBody
-      setSpringLinearLowerLimit spring (-5)
-      setSpringLinearUpperLimit spring 5
-      setSpringAngularLowerLimit spring (-1)
-      setSpringAngularUpperLimit spring 1
-      setSpringAngularStiffness spring 100
-      setSpringLinearStiffness spring 100
-      setSpringLinearDamping spring 0.9
-      setSpringAngularDamping spring 0.9
-      setSpringLinearBounce spring 10
-      setSpringAngularBounce spring 10
-      -- setSpringLinearEquilibrium spring 0
-      -- setSpringAngularEquilibrium spring 0
-      setLinearSpringEnabled spring (V3 True True True)
-      setAngularSpringEnabled spring (V3 True True True)
-
+    let springID = 99
+    springRigidBody <- addCube dynamicsWorld (RigidBodyID springID) mempty 
+      { pcPosition = V3 0 20 0
+      , pcRotation = Quaternion 0 (V3 0 1 0)
+      }
+    wldCubes . at (fromIntegral springID) ?= Cube
+      { _cubBody = springRigidBody
+      , _cubColor = V4 1 0.5 1 1
+      }
+    spring <- addWorldSpringConstraint dynamicsWorld springRigidBody 
+    tuneSpring spring
 
     whileWindow gpWindow $ do
       glClear (GL_COLOR_BUFFER_BIT .|. GL_DEPTH_BUFFER_BIT)
@@ -110,27 +98,19 @@ main = do
         closeOnEscape gpWindow e
 
       -- Move the cube up and down
-      y <- (+ 20) . (* 5) . sin . (\x->x::Double) . realToFrac . utctDayTime <$> liftIO getCurrentTime
+      y <- (+ 20) . (* 10) . sin . (\x->x::Double) . realToFrac . utctDayTime <$> liftIO getCurrentTime
       setRigidBodyWorldTransform movingRigidBody (V3 0 y 5) (axisAngle (V3 0 1 0) 0)
 
+      setSpringWorldPose spring (V3 0 y 5) (axisAngle (V3 0 1 0) 0)
+
+      
       stepSimulation dynamicsWorld
 
-      -- Set all cubes to white
-      wldCubes . traverse . cubColor .= V4 1 1 1 1
-      -- Set all colliding cubes to green
-      collisions <- getCollisions dynamicsWorld
-      forM_ collisions $ \collision -> do
-        let bodyAID = (fromIntegral . unRigidBodyID . cbBodyAID) collision
-        let bodyBID = (fromIntegral . unRigidBodyID . cbBodyBID) collision
-        when (bodyAID /= 0 && bodyBID /= 0) $ 
-          liftIO.putStrLn$"Cube " ++ show bodyAID ++ " hit Cube " ++ show bodyBID
-        wldCubes . at bodyAID . traverse . cubColor .= V4 0 1 0 1
-        wldCubes . at bodyBID . traverse . cubColor .= V4 0 1 0 1
-
       -- Render Cubes
-
       projMat <- makeProjection gpWindow
       viewMat <- viewMatrixFromPose <$> use wldPlayer
+
+      uniformV3 uCamera =<< use (wldPlayer . posPosition)
 
       let viewProj = projMat !*! viewMat
 

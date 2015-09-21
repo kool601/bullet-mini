@@ -33,7 +33,7 @@ newWorld = World
 
 main :: IO ()
 main = do
-  GamePal{..}    <- initGamePal "Bullet" []
+  GamePal{..}    <- initGamePal "Bullet" NoGCPerFrame []
 
   cubeProg       <- createShaderProgram "test/shared/cube.vert" "test/shared/cube.frag"
   cubeGeo        <- cubeGeometry (1 :: V3 GLfloat) (V3 1 1 1)

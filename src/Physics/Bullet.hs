@@ -197,6 +197,15 @@ removeCube (DynamicsWorld dynamicsWorld) (RigidBody rigidBody) = liftIO [C.block
   
   }|]
 
+setCubeScale :: (MonadIO m, Real a) => RigidBody -> V3 a -> m ()
+setCubeScale (RigidBody rigidBody) scale = liftIO [C.block| void {
+  btRigidBody* rigidBody = (btRigidBody *) $(void *rigidBody);
+
+
+  }|]
+  where
+    (V3 x y z) = realToFrac <$> scale
+
 applyCentralForce :: (Functor m, MonadIO m, Real a) => RigidBody -> V3 a -> m ()
 applyCentralForce (RigidBody rigidBody) force = liftIO [C.block| void {
 
@@ -453,6 +462,21 @@ addSpringConstraint (DynamicsWorld dynamicsWorld) (RigidBody rigidBodyA) (RigidB
 
   return spring;
   }|]
+
+setSpringWorldPose :: (Real a, MonadIO m) => SpringConstraint -> V3 a -> Quaternion a -> m ()
+setSpringWorldPose (SpringConstraint springConstraint) position rotation = liftIO [C.block| void {
+  btGeneric6DofSpring2Constraint* spring = (btGeneric6DofSpring2Constraint *) $( void *springConstraint );
+  
+  btQuaternion q = btQuaternion( $( float qx ) , $( float qy ), $( float qz ), $( float qw ) );
+  btVector3    p = btVector3( $( float x ) , $( float y ) , $( float z ) );
+  btTransform  frame = btTransform( q , p );
+
+  spring->setFrames(frame, spring->getFrameOffsetB());
+
+  }|]
+  where
+    (V3 x y z)                    = realToFrac <$> position
+    (Quaternion qw (V3 qx qy qz)) = realToFrac <$> rotation
 
 setSpringLinearLowerLimit :: MonadIO m => SpringConstraint -> V3 CFloat -> m ()
 setSpringLinearLowerLimit (SpringConstraint springConstraint) (V3 x y z) = liftIO [C.block| void {
