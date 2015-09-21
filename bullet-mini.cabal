@@ -132,6 +132,7 @@ executable memory
 library
   exposed-modules:     Physics.Bullet
   build-depends:       base
+                     , binary
                      , linear-extra
                      , mtl
                      , inline-c >= 0.5.4.3

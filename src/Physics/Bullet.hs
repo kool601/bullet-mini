@@ -3,6 +3,9 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE ViewPatterns #-}
 
 module Physics.Bullet where
 
@@ -18,6 +21,8 @@ import Control.Monad.Trans
 import Data.Monoid
 -- import Control.Applicative
 import Data.IORef
+import Data.Binary
+import GHC.Generics
 
 {-
 See 
@@ -76,7 +81,8 @@ instance Monoid PhysicsWorldConfig where
 
 newtype DynamicsWorld    = DynamicsWorld { unDynamicsWorld :: Ptr () }
 newtype RigidBody        = RigidBody     { unRigidBody     :: Ptr () } deriving Show
-newtype RigidBodyID      = RigidBodyID   { unRigidBodyID   :: CInt   } deriving (Eq, Show, Ord)
+newtype RigidBodyID      = RigidBodyID   { unRigidBodyID   :: Word32 } 
+  deriving (Eq, Show, Ord, Binary, Num, Enum, Real, Integral)
 
 newtype SpringConstraint = SpringConstraint { unSpringConstraint :: Ptr () } deriving Show
 
@@ -111,7 +117,7 @@ addGroundPlane dynamicsWorld rigidBodyID height  =
 -- Making sure pass in all of the information from the physics config
 -- as usable c++ data
 addStaticPlane :: (Functor m, MonadIO m) => DynamicsWorld -> RigidBodyID -> PhysicsConfig -> m RigidBody
-addStaticPlane (DynamicsWorld dynamicsWorld) (RigidBodyID rigidBodyID) PhysicsConfig{..} = liftIO $ 
+addStaticPlane (DynamicsWorld dynamicsWorld) (fromIntegral -> rigidBodyID) PhysicsConfig{..} = liftIO $ 
   RigidBody <$> [C.block| void * {
 
     btDiscreteDynamicsWorld* dynamicsWorld = ( btDiscreteDynamicsWorld* ) $( void *dynamicsWorld );
@@ -146,7 +152,7 @@ addStaticPlane (DynamicsWorld dynamicsWorld) (RigidBodyID rigidBodyID) PhysicsCo
     yP                            = realToFrac     pcYPos
 
 addCube :: (Functor m, MonadIO m) => DynamicsWorld -> RigidBodyID -> PhysicsConfig -> m RigidBody
-addCube (DynamicsWorld dynamicsWorld) (RigidBodyID rigidBodyID) PhysicsConfig{..} = liftIO $ 
+addCube (DynamicsWorld dynamicsWorld) (fromIntegral -> rigidBodyID) PhysicsConfig{..} = liftIO $ 
   RigidBody <$> [C.block| void * {
 
     btDiscreteDynamicsWorld* dynamicsWorld = ( btDiscreteDynamicsWorld* ) $( void *dynamicsWorld );
@@ -237,33 +243,37 @@ stepSimulation (DynamicsWorld dynamicsWorld) = liftIO [C.block| void {
 
 getRigidBodyID :: MonadIO m => RigidBody -> m RigidBodyID
 getRigidBodyID (RigidBody rigidBody) = liftIO $ 
-  RigidBodyID <$> [C.block| int {
+  fromIntegral <$> [C.block| int {
     btRigidBody* rigidBody = (btRigidBody *)$(void *rigidBody);
     int rigidBodyID = rigidBody->getUserIndex();
     return rigidBodyID;
     }|]
 
+-- I've disabled carrying the pointers in this structure so it can be serialized across the network.
+-- We could also split it into 2 pieces, since it's probably often nice to query to the rigidbody directly.
 data Collision = Collision
-  { cbBodyA          :: !RigidBody
-  , cbBodyB          :: !RigidBody
-  , cbBodyAID        :: !RigidBodyID
+  -- { cbBodyA          :: !RigidBody
+  -- , cbBodyB          :: !RigidBody
+  { cbBodyAID        :: !RigidBodyID
   , cbBodyBID        :: !RigidBodyID
   , cbPositionOnA    :: !(V3 Float)
   , cbPositionOnB    :: !(V3 Float)
   , cbNormalOnB      :: !(V3 Float)
   , cbAppliedImpulse :: !Float
-  } deriving Show
+  } deriving (Show, Generic)
+instance Binary Collision
 
 getCollisions :: MonadIO m => DynamicsWorld -> m [Collision]
 getCollisions (DynamicsWorld dynamicsWorld) = liftIO $ do
 
   collisionsRef <- newIORef []
-  let captureCollision objA objB objAID objBID aX aY aZ bX bY bZ nX nY nZ impulse = do
+  -- let captureCollision objA objB objAID objBID aX aY aZ bX bY bZ nX nY nZ impulse = do
+  let captureCollision objAID objBID aX aY aZ bX bY bZ nX nY nZ impulse = do
         let collision = Collision
-              { cbBodyA = RigidBody objA
-              , cbBodyB = RigidBody objB
-              , cbBodyAID = RigidBodyID objAID
-              , cbBodyBID = RigidBodyID objBID
+              -- { cbBodyA = RigidBody objA
+              -- , cbBodyB = RigidBody objB
+              { cbBodyAID = RigidBodyID (fromIntegral objAID)
+              , cbBodyBID = RigidBodyID (fromIntegral objBID)
               , cbPositionOnA = V3 (realToFrac aX) (realToFrac aY) (realToFrac aZ)
               , cbPositionOnB = V3 (realToFrac bX) (realToFrac bY) (realToFrac bZ)
               , cbNormalOnB   = V3 (realToFrac nX) (realToFrac nY) (realToFrac nZ)
@@ -297,9 +307,10 @@ getCollisions (DynamicsWorld dynamicsWorld) = liftIO $ do
 
           btScalar impulse = pt.getAppliedImpulse();
 
-          $fun:(void (*captureCollision)(void*, void*, int, int, float, float, float, float, float, float, float, float, float, float))(
-            (void *)obA,
-            (void *)obB,
+          // fun:(void (*captureCollision)(void*, void*, int, int, float, float, float, float, float, float, float, float, float, float))(
+          //   (void *)obA,
+          //   (void *)obB,
+          $fun:(void (*captureCollision)(int, int, float, float, float, float, float, float, float, float, float, float))(
             obA->getUserIndex(),
             obB->getUserIndex(),
             ptA.getX(),
