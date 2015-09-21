@@ -6,11 +6,11 @@ import Graphics.GL.Pal
 import Graphics.GL
 import Game.Pal
 import Physics.Bullet
-import Linear
+import Linear.Extra
 
 import Control.Monad
 import Control.Monad.State
-import Control.Lens
+import Control.Lens.Extra
 import qualified Data.Map as Map
 import Data.Map (Map)
 import Data.Maybe
@@ -18,13 +18,14 @@ import Data.Maybe
 import Data.Time
 
 import Types
+import CubeUniforms
 
 import Halive.Utils
 
 data World = World
-  { _wldPlayer :: Pose
-  , _wldCubes  :: Map ObjectID Cube
-  , _wldFrames :: Int
+  { _wldPlayer :: !(Pose GLfloat)
+  , _wldCubes  :: !(Map ObjectID Cube)
+  , _wldFrames :: !Int
   }
 makeLenses ''World
 
@@ -123,7 +124,7 @@ main = do
         let bodyAID = (fromIntegral . unRigidBodyID . cbBodyAID) collision
         let bodyBID = (fromIntegral . unRigidBodyID . cbBodyBID) collision
         when (bodyAID /= 0 && bodyBID /= 0) $ 
-          liftIO.putStrLn$"Cube " ++ show bodyAID ++ " hit Cube " ++ show bodyBID
+          liftIO . putStrLn $ "Cube " ++ show bodyAID ++ " hit Cube " ++ show bodyBID
         wldCubes . at bodyAID . traverse . cubColor .= V4 0 1 0 1
         wldCubes . at bodyBID . traverse . cubColor .= V4 0 1 0 1
 

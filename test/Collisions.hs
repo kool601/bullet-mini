@@ -4,25 +4,26 @@
 import Graphics.UI.GLFW.Pal
 import Graphics.GL.Pal
 import Graphics.GL
-import Linear
+import Linear.Extra
 import Game.Pal
 
 import Control.Monad
 import Control.Monad.State
-import Control.Lens
+import Control.Lens.Extra
 import qualified Data.Map as Map
 import Data.Map (Map)
 
 import Data.Maybe
 
 import Types
+import CubeUniforms
 
 import Physics.Bullet
-import Control.Lens
+
 
 data World = World
-  { _wldPlayer :: Pose
-  , _wldCubes  :: Map ObjectID Cube
+  { _wldPlayer :: !(Pose GLfloat)
+  , _wldCubes  :: !(Map ObjectID Cube)
   }
 makeLenses ''World
 

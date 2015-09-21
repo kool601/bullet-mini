@@ -1,5 +1,5 @@
 import Physics.Bullet
-import Linear
+import Linear.Extra
 import Control.Monad
 import Control.Concurrent
 

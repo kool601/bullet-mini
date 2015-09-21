@@ -1,4 +1,4 @@
- {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -13,7 +13,7 @@ import Foreign.Ptr
 -- import Foreign.StablePtr
 import Foreign.ForeignPtr
 import Foreign.Marshal.Array
-import Linear
+import Linear.Extra
 import Control.Monad.Trans
 import Data.Monoid
 -- import Control.Applicative
@@ -42,6 +42,8 @@ data PhysicsConfig = PhysicsConfig
   , pcInertia     :: V3 Float
   , pcMass        :: Float
   , pcYPos        :: Float
+  , pcCollisionGroup :: CShort
+  , pcCollisionMask  :: CShort
   }
 
 
@@ -54,6 +56,8 @@ instance Monoid PhysicsConfig where
         , pcMass        = 1
         , pcRestitution = 0.5
         , pcYPos        = 0
+        , pcCollisionGroup = 0
+        , pcCollisionMask  = 0
         }
   mappend _ b = b
 
@@ -173,7 +177,7 @@ addCube (DynamicsWorld dynamicsWorld) (RigidBodyID rigidBodyID) PhysicsConfig{..
     // Attach the given RigidBodyID
     rigidBody         -> setUserIndex( $(int rigidBodyID) );
 
-    dynamicsWorld     -> addRigidBody( rigidBody );
+    dynamicsWorld     -> addRigidBody( rigidBody, $(short int pcCollisionGroup), $(short int pcCollisionMask) );
 
     return rigidBody;
 
@@ -197,11 +201,15 @@ removeCube (DynamicsWorld dynamicsWorld) (RigidBody rigidBody) = liftIO [C.block
   
   }|]
 
+-- NOTE: We'll need some type safety for RigidBodies, but we've only got cubes at the moment
 setCubeScale :: (MonadIO m, Real a) => RigidBody -> V3 a -> m ()
 setCubeScale (RigidBody rigidBody) scale = liftIO [C.block| void {
   btRigidBody* rigidBody = (btRigidBody *) $(void *rigidBody);
+  btVector3 scale = btVector3( $(float x) , $(float y) , $(float z) );
 
+  btBoxShape *boxShape = (btBoxShape *)rigidBody->getCollisionShape();
 
+  boxShape->setLocalScaling(scale);
   }|]
   where
     (V3 x y z) = realToFrac <$> scale
@@ -478,40 +486,44 @@ setSpringWorldPose (SpringConstraint springConstraint) position rotation = liftI
     (V3 x y z)                    = realToFrac <$> position
     (Quaternion qw (V3 qx qy qz)) = realToFrac <$> rotation
 
-setSpringLinearLowerLimit :: MonadIO m => SpringConstraint -> V3 CFloat -> m ()
-setSpringLinearLowerLimit (SpringConstraint springConstraint) (V3 x y z) = liftIO [C.block| void {
+setSpringLinearLowerLimit :: (Real a, MonadIO m) => SpringConstraint -> V3 a -> m ()
+setSpringLinearLowerLimit (SpringConstraint springConstraint) xyz = liftIO [C.block| void {
   btGeneric6DofSpring2Constraint* spring = (btGeneric6DofSpring2Constraint *) $( void *springConstraint );
 
   spring->setLinearLowerLimit(btVector3( $(float x), $(float y), $(float z)));
 
   }|]
+  where (V3 x y z) = realToFrac <$> xyz
 
-setSpringLinearUpperLimit :: MonadIO m => SpringConstraint -> V3 CFloat -> m ()
-setSpringLinearUpperLimit (SpringConstraint springConstraint) (V3 x y z) = liftIO [C.block| void {
+setSpringLinearUpperLimit :: (Real a, MonadIO m) => SpringConstraint -> V3 a -> m ()
+setSpringLinearUpperLimit (SpringConstraint springConstraint) xyz = liftIO [C.block| void {
   btGeneric6DofSpring2Constraint* spring = (btGeneric6DofSpring2Constraint *) $( void *springConstraint );
 
   spring->setLinearUpperLimit(btVector3($(float x), $(float y), $(float z)));
 
   }|]
+  where (V3 x y z) = realToFrac <$> xyz
 
-setSpringAngularLowerLimit :: MonadIO m => SpringConstraint -> V3 CFloat -> m ()
-setSpringAngularLowerLimit (SpringConstraint springConstraint) (V3 x y z) = liftIO [C.block| void {
+setSpringAngularLowerLimit :: (Real a, MonadIO m) => SpringConstraint -> V3 a -> m ()
+setSpringAngularLowerLimit (SpringConstraint springConstraint) xyz = liftIO [C.block| void {
   btGeneric6DofSpring2Constraint* spring = (btGeneric6DofSpring2Constraint *) $( void *springConstraint );
 
   spring->setAngularLowerLimit(btVector3($(float x), $(float y), $(float z)));
 
   }|]
+  where (V3 x y z) = realToFrac <$> xyz
 
-setSpringAngularUpperLimit :: MonadIO m => SpringConstraint -> V3 CFloat -> m ()
-setSpringAngularUpperLimit (SpringConstraint springConstraint) (V3 x y z) = liftIO [C.block| void {
+setSpringAngularUpperLimit :: (Real a, MonadIO m) => SpringConstraint -> V3 a -> m ()
+setSpringAngularUpperLimit (SpringConstraint springConstraint) xyz = liftIO [C.block| void {
   btGeneric6DofSpring2Constraint* spring = (btGeneric6DofSpring2Constraint *) $( void *springConstraint );
 
   spring->setAngularUpperLimit(btVector3($(float x), $(float y), $(float z)));
 
   }|]
+  where (V3 x y z) = realToFrac <$> xyz
 
-setSpringLinearBounce :: MonadIO m => SpringConstraint -> V3 CFloat -> m ()
-setSpringLinearBounce (SpringConstraint springConstraint) (V3 x y z) = liftIO [C.block| void {
+setSpringLinearBounce :: (Real a, MonadIO m) => SpringConstraint -> V3 a -> m ()
+setSpringLinearBounce (SpringConstraint springConstraint) xyz = liftIO [C.block| void {
   btGeneric6DofSpring2Constraint* spring = (btGeneric6DofSpring2Constraint *) $( void *springConstraint );
 
   spring->setBounce(0, $(float x));
@@ -519,10 +531,11 @@ setSpringLinearBounce (SpringConstraint springConstraint) (V3 x y z) = liftIO [C
   spring->setBounce(2, $(float z));
 
   }|]
+  where (V3 x y z) = realToFrac <$> xyz
 
 
-setSpringAngularBounce :: MonadIO m => SpringConstraint -> V3 CFloat -> m ()
-setSpringAngularBounce (SpringConstraint springConstraint) (V3 x y z) = liftIO [C.block| void {
+setSpringAngularBounce :: (Real a, MonadIO m) => SpringConstraint -> V3 a -> m ()
+setSpringAngularBounce (SpringConstraint springConstraint) xyz = liftIO [C.block| void {
   btGeneric6DofSpring2Constraint* spring = (btGeneric6DofSpring2Constraint *) $( void *springConstraint );
 
   spring->setBounce(3, $(float x));
@@ -530,9 +543,10 @@ setSpringAngularBounce (SpringConstraint springConstraint) (V3 x y z) = liftIO [
   spring->setBounce(5, $(float z));
 
   }|]
+  where (V3 x y z) = realToFrac <$> xyz
 
-setSpringLinearStiffness :: MonadIO m => SpringConstraint -> V3 CFloat -> m ()
-setSpringLinearStiffness (SpringConstraint springConstraint) (V3 x y z) = liftIO [C.block| void {
+setSpringLinearStiffness :: (Real a, MonadIO m) => SpringConstraint -> V3 a -> m ()
+setSpringLinearStiffness (SpringConstraint springConstraint) xyz = liftIO [C.block| void {
   btGeneric6DofSpring2Constraint* spring = (btGeneric6DofSpring2Constraint *) $( void *springConstraint );
 
   spring->setStiffness(0, $(float x));
@@ -540,9 +554,10 @@ setSpringLinearStiffness (SpringConstraint springConstraint) (V3 x y z) = liftIO
   spring->setStiffness(2, $(float z));
 
   }|]
+  where (V3 x y z) = realToFrac <$> xyz
 
-setSpringAngularStiffness :: MonadIO m => SpringConstraint -> V3 CFloat -> m ()
-setSpringAngularStiffness (SpringConstraint springConstraint) (V3 x y z) = liftIO [C.block| void {
+setSpringAngularStiffness :: (Real a, MonadIO m) => SpringConstraint -> V3 a -> m ()
+setSpringAngularStiffness (SpringConstraint springConstraint) xyz = liftIO [C.block| void {
   btGeneric6DofSpring2Constraint* spring = (btGeneric6DofSpring2Constraint *) $( void *springConstraint );
 
   spring->setStiffness(3, $(float x));
@@ -550,9 +565,10 @@ setSpringAngularStiffness (SpringConstraint springConstraint) (V3 x y z) = liftI
   spring->setStiffness(5, $(float z));
 
   }|]
+  where (V3 x y z) = realToFrac <$> xyz
 
-setSpringLinearDamping :: MonadIO m => SpringConstraint -> V3 CFloat -> m ()
-setSpringLinearDamping (SpringConstraint springConstraint) (V3 x y z) = liftIO [C.block| void {
+setSpringLinearDamping :: (Real a, MonadIO m) => SpringConstraint -> V3 a -> m ()
+setSpringLinearDamping (SpringConstraint springConstraint) xyz = liftIO [C.block| void {
   btGeneric6DofSpring2Constraint* spring = (btGeneric6DofSpring2Constraint *) $( void *springConstraint );
 
   spring->setDamping(0, $(float x));
@@ -560,9 +576,10 @@ setSpringLinearDamping (SpringConstraint springConstraint) (V3 x y z) = liftIO [
   spring->setDamping(2, $(float z));
 
   }|]
+  where (V3 x y z) = realToFrac <$> xyz
 
-setSpringAngularDamping :: MonadIO m => SpringConstraint -> V3 CFloat -> m ()
-setSpringAngularDamping (SpringConstraint springConstraint) (V3 x y z) = liftIO [C.block| void {
+setSpringAngularDamping :: (Real a, MonadIO m) => SpringConstraint -> V3 a -> m ()
+setSpringAngularDamping (SpringConstraint springConstraint) xyz = liftIO [C.block| void {
   btGeneric6DofSpring2Constraint* spring = (btGeneric6DofSpring2Constraint *) $( void *springConstraint );
 
   spring->setDamping(3, $(float x));
@@ -570,9 +587,10 @@ setSpringAngularDamping (SpringConstraint springConstraint) (V3 x y z) = liftIO 
   spring->setDamping(5, $(float z));
 
   }|]
+  where (V3 x y z) = realToFrac <$> xyz
 
-setSpringLinearEquilibrium :: MonadIO m => SpringConstraint -> V3 CFloat -> m ()
-setSpringLinearEquilibrium (SpringConstraint springConstraint) (V3 x y z) = liftIO [C.block| void {
+setSpringLinearEquilibrium :: (Real a, MonadIO m) => SpringConstraint -> V3 a -> m ()
+setSpringLinearEquilibrium (SpringConstraint springConstraint) xyz = liftIO [C.block| void {
   btGeneric6DofSpring2Constraint* spring = (btGeneric6DofSpring2Constraint *) $( void *springConstraint );
 
   spring->setEquilibriumPoint(0, $(float x));
@@ -580,9 +598,10 @@ setSpringLinearEquilibrium (SpringConstraint springConstraint) (V3 x y z) = lift
   spring->setEquilibriumPoint(2, $(float z));
 
   }|]
+  where (V3 x y z) = realToFrac <$> xyz
 
-setSpringAngularEquilibrium :: MonadIO m => SpringConstraint -> V3 CFloat -> m ()
-setSpringAngularEquilibrium (SpringConstraint springConstraint) (V3 x y z) = liftIO [C.block| void {
+setSpringAngularEquilibrium :: (Real a, MonadIO m) => SpringConstraint -> V3 a -> m ()
+setSpringAngularEquilibrium (SpringConstraint springConstraint) xyz = liftIO [C.block| void {
   btGeneric6DofSpring2Constraint* spring = (btGeneric6DofSpring2Constraint *) $( void *springConstraint );
 
   spring->setEquilibriumPoint(3, $(float x));
@@ -590,9 +609,10 @@ setSpringAngularEquilibrium (SpringConstraint springConstraint) (V3 x y z) = lif
   spring->setEquilibriumPoint(5, $(float z));
 
   }|]
+  where (V3 x y z) = realToFrac <$> xyz
 
 setLinearSpringEnabled :: MonadIO m => SpringConstraint -> V3 Bool -> m ()
-setLinearSpringEnabled (SpringConstraint springConstraint) (V3 x y z) = liftIO [C.block| void {
+setLinearSpringEnabled (SpringConstraint springConstraint) xyz = liftIO [C.block| void {
   btGeneric6DofSpring2Constraint* spring = (btGeneric6DofSpring2Constraint *) $( void *springConstraint );
 
   spring->enableSpring(0, $(int x'));
@@ -600,10 +620,10 @@ setLinearSpringEnabled (SpringConstraint springConstraint) (V3 x y z) = liftIO [
   spring->enableSpring(2, $(int z'));
 
   }|]
-  where V3 x' y' z' = fromIntegral . fromEnum <$> V3 x y z
+  where V3 x' y' z' = fromIntegral . fromEnum <$> xyz
 
 setAngularSpringEnabled :: MonadIO m => SpringConstraint -> V3 Bool -> m ()
-setAngularSpringEnabled (SpringConstraint springConstraint) (V3 x y z) = liftIO [C.block| void {
+setAngularSpringEnabled (SpringConstraint springConstraint) xyz = liftIO [C.block| void {
   btGeneric6DofSpring2Constraint* spring = (btGeneric6DofSpring2Constraint *) $( void *springConstraint );
 
   spring->enableSpring(3, $(int x'));
@@ -611,4 +631,15 @@ setAngularSpringEnabled (SpringConstraint springConstraint) (V3 x y z) = liftIO 
   spring->enableSpring(5, $(int z'));
 
   }|]
-  where V3 x' y' z' = fromIntegral . fromEnum <$> V3 x y z
+  where V3 x' y' z' = fromIntegral . fromEnum <$> xyz
+
+-- | Build a cubic room from static planes
+addStaticRoom :: (MonadIO m) => DynamicsWorld -> RigidBodyID -> Float -> m ()
+addStaticRoom dynamicsWorld bodyID height = do
+  _ <- addStaticPlane dynamicsWorld bodyID mempty { pcRotation = axisAngle ( V3 1 0 0 ) ((-pi)/2) , pcYPos = ( height * 0.5 ) }
+  _ <- addStaticPlane dynamicsWorld bodyID mempty { pcRotation = axisAngle ( V3 1 0 0 ) (( pi)/2) , pcYPos = ( height * 0.5 ) }
+  _ <- addStaticPlane dynamicsWorld bodyID mempty { pcRotation = axisAngle ( V3 0 1 0 ) ((-pi)/2) , pcYPos = ( height * 0.5 ) }
+  _ <- addStaticPlane dynamicsWorld bodyID mempty { pcRotation = axisAngle ( V3 0 1 0 ) (( pi)/2) , pcYPos = ( height * 0.5 ) }
+  _ <- addStaticPlane dynamicsWorld bodyID mempty { pcRotation = axisAngle ( V3 0 1 0 ) (0 )      , pcYPos = ( height * 0.5 ) }
+  _ <- addStaticPlane dynamicsWorld bodyID mempty { pcRotation = axisAngle ( V3 0 1 0 ) (pi)      , pcYPos = ( height * 0.5 ) }
+  return ()

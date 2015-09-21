@@ -2,25 +2,24 @@
 {-# LANGUAGE TemplateHaskell #-}
 import Graphics.UI.GLFW.Pal
 import Graphics.GL.Pal
-import Graphics.GL
 import Game.Pal
-import Linear
 
 import Control.Monad
 import Control.Monad.State
-import Control.Lens
+import Control.Lens.Extra
 import Data.Maybe
 import Data.Map (Map)
 import qualified Data.Map as Map
 import System.Random
 
 import Types
+import CubeUniforms
 
 import Physics.Bullet
 
 data World = World
-  { _wldPlayer :: Pose
-  , _wldCubes  :: Map ObjectID Cube
+  { _wldPlayer :: !(Pose GLfloat)
+  , _wldCubes  :: !(Map ObjectID Cube)
   }
 makeLenses ''World
 
@@ -72,7 +71,7 @@ main = do
                                         let cubeID = fromIntegral (unRigidBodyID bodyID)
                                         [r,g,b] <- liftIO (replicateM 3 randomIO)
                                         wldCubes . at cubeID . traverse . cubColor .= V4 r g b 1
-          otherwise           -> closeOnEscape gpWindow e
+          _                   -> closeOnEscape gpWindow e
           
       applyMouseLook gpWindow wldPlayer
       applyWASD gpWindow wldPlayer        
