@@ -57,7 +57,7 @@ main = do
         }
   void . flip runStateT initialWorld $ do
 
-    _ <- addStaticRoom dynamicsWorld (RigidBodyID 0) 10
+    _ <- addStaticPlane dynamicsWorld (RigidBodyID 0) mempty {pcYPos = 0}
 
     forM_ [1..1000] $ \i -> do
       rigidBody <- addCube dynamicsWorld (RigidBodyID i) mempty 
