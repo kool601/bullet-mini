@@ -308,6 +308,25 @@ getCollisions (DynamicsWorld dynamicsWorld) = liftIO $ do
 
   readIORef collisionsRef
 
+data Ray a = Ray { rayFrom :: !(V3 a)
+                 , rayTo   :: !(V3 a)
+                 } deriving (Show, Eq)
+
+rayTestClosest :: (Real a, MonadIO m) => DynamicsWorld -> Ray a -> m (Maybe RigidBody)
+rayTestClosest (DynamicsWorld dynamicsWorld) ray = liftIO $
+  toRigid <$> [C.block| void * {
+    btCollisionWorld* world = (btCollisionWorld *)$(void *dynamicsWorld);
+    btVector3 from = btVector3($(float fx), $(float fy), $(float fz));
+    btVector3 to = btVector3($(float tx), $(float ty), $(float tz));
+    
+    btCollisionWorld::ClosestRayResultCallback callback(from, to);
+    world->rayTest(from, to, callback);
+    return (btCollisionObject *)callback.m_collisionObject;
+  }|]
+  where (V3 fx fy fz) = realToFrac <$> rayFrom ray
+        (V3 tx ty tz) = realToFrac <$> rayTo ray
+        toRigid ptr = if ptr == nullPtr then Nothing else Just (RigidBody ptr)
+
 getBodyState :: (Fractional a, MonadIO m) => RigidBody -> m (V3 a, Quaternion a)
 getBodyState (RigidBody rigidBody) = do
 

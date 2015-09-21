@@ -33,18 +33,18 @@ newWorld = World
 
 main :: IO ()
 main = do
-  GamePal{..} <- initGamePal "Bullet" []
+  GamePal{..}    <- initGamePal "Bullet" []
 
-  cubeProg   <- createShaderProgram "test/shared/cube.vert" "test/shared/cube.frag"
-  cubeGeo    <- cubeGeometry (1 :: V3 GLfloat) (V3 1 1 1)
-  cubeShape  <- makeShape cubeGeo cubeProg
-  let Uniforms{..} = sUniforms cubeShape
-  useProgram (sProgram cubeShape)
+  cubeProg       <- createShaderProgram "test/shared/cube.vert" "test/shared/cube.frag"
+  cubeGeo        <- cubeGeometry (1 :: V3 GLfloat) (V3 1 1 1)
+  cubeShape      <- makeShape cubeGeo cubeProg
 
   dynamicsWorld  <- createDynamicsWorld mempty
   _              <- addGroundPlane dynamicsWorld (RigidBodyID 0) 0
   
 
+  let Uniforms{..} = sUniforms cubeShape
+  useProgram (sProgram cubeShape)
   glEnable GL_DEPTH_TEST
 
   glClearColor 0 0 0.1 1
