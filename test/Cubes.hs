@@ -62,7 +62,7 @@ main = do
       
       processEvents gpEvents $ \e -> do
         case e of
-          (MouseButton _ _ _) -> do mBodyID <- mapM getRigidBodyID =<< rayTestClosest dynamicsWorld =<< posToRay gpWindow =<< getCursorPos gpWindow
+          (MouseButton _ _ _) -> do mBodyID <- mapM getRigidBodyID =<< rayTestClosest dynamicsWorld =<< getCursorRay gpWindow
                                     case mBodyID of
                                       Nothing -> return ()
                                       Just bodyID -> do
@@ -103,10 +103,8 @@ main = do
       swapBuffers gpWindow
 
 
-posToRay :: MonadIO m => Window -> (GLfloat, GLfloat) -> StateT World m (Ray GLfloat)
-posToRay win (x,y) = do
+getCursorRay :: MonadIO m => Window -> StateT World m (V3 GLfloat, V3 GLfloat)
+getCursorRay win = do
   pose <- use wldPlayer
-  (_, h) <- liftIO $ getWindowSize win
-  (start, end) <- windowPosToWorldRay win pose (x, (fromIntegral h) - y)
-  liftIO $ putStrLn $ "Converted " ++ (show (x, y)) ++ " to " ++ (show (start, end))
-  return (Ray start end)
+  (x, y) <- getCursorPos win
+  windowPosToWorldRay win pose (x, y)
