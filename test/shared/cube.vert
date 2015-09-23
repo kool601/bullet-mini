@@ -18,5 +18,5 @@ void main() {
     
     // Pass some variables to the fragment shader
     vPosition = vec3(uModel * vec4(aPosition, 1.0));
-    vNormal   = vec3(uInverseModel * vec4(aNormal, 1.0));
+    vNormal   = vec3(uModel * vec4(aNormal, 0.0));
 }
