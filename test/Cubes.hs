@@ -103,7 +103,10 @@ main = do
       swapBuffers gpWindow
 
 
+posToRay :: MonadIO m => Window -> (GLfloat, GLfloat) -> StateT World m (Ray GLfloat)
 posToRay win (x,y) = do
   pose <- use wldPlayer
-  (start, end) <- windowPosToWorldRay win pose (fromRational (toRational x), fromRational (toRational y))
+  (_, h) <- liftIO $ getWindowSize win
+  (start, end) <- windowPosToWorldRay win pose (x, (fromIntegral h) - y)
+  liftIO $ putStrLn $ "Converted " ++ (show (x, y)) ++ " to " ++ (show (start, end))
   return (Ray start end)
