@@ -10,7 +10,7 @@ packages:
 - ../linear-extra
 - ../lens-extra
 - ../halive
-- ../vr-pal
+- ../openvr-hs
 extra-deps:
 - inline-c-0.5.4.3
 - inline-c-cpp-0.1.0.0
