@@ -29,7 +29,7 @@ test-suite cubes
   build-depends:        base
                       , bullet-mini
                       , containers
-                      , game-pal
+                      , vr-pal
                       , gl
                       , gl-pal
                       , glfw-pal
@@ -53,7 +53,7 @@ test-suite collisions
                      , containers
                      , gl
                      , gl-pal
-                     , game-pal
+                     , vr-pal
                      , glfw-pal
                      , lens-extra
                      , linear-extra
@@ -72,7 +72,7 @@ test-suite springs
                      , time
                      , gl
                      , gl-pal
-                     , game-pal
+                     , vr-pal
                      , glfw-pal
                      , linear-extra
                      , lens-extra
@@ -93,7 +93,7 @@ test-suite lasso
                      , time
                      , gl
                      , gl-pal
-                     , game-pal
+                     , vr-pal
                      , glfw-pal
                      , linear-extra
                      , lens-extra
@@ -114,7 +114,7 @@ test-suite vacuum
                      , time
                      , gl
                      , gl-pal
-                     , game-pal
+                     , vr-pal
                      , glfw-pal
                      , linear-extra
                      , lens-extra

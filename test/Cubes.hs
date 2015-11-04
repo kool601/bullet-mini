@@ -2,7 +2,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 import Graphics.UI.GLFW.Pal
 import Graphics.GL.Pal
-import Game.Pal
+import Graphics.VR.Pal
 
 import Control.Monad
 import Control.Monad.State
@@ -31,7 +31,7 @@ newWorld = World
 main :: IO ()
 main = do
   
-  GamePal{..} <- initGamePal "Bullet" NoGCPerFrame []
+  VRPal{..} <- initVRPal "Bullet" NoGCPerFrame []
 
   cubeProg  <- createShaderProgram "test/shared/cube.vert" "test/shared/cube.frag"
   cubeGeo   <- cubeGeometry (1 :: V3 GLfloat) (V3 1 1 1)
@@ -80,8 +80,10 @@ main = do
 
       glClear (GL_COLOR_BUFFER_BIT .|. GL_DEPTH_BUFFER_BIT)
 
-      projMat <- makeProjection gpWindow
+      projMat <- getWindowProjection gpWindow 45 0.1 1000
       viewMat <- viewMatrixFromPose <$> use wldPlayer
+      (x,y,w,h) <- getWindowViewport gpWindow
+      glViewport x y w h
       
       uniformV3 uCamera =<< use (wldPlayer . posPosition)
 
@@ -98,7 +100,7 @@ main = do
           uniformM44 uInverseModel        (fromMaybe model (inv44 model))
           uniformM44 uModel               model
           uniformV4  uDiffuse             (cube ^. cubColor)
-          glDrawElements GL_TRIANGLES (vertCount (sGeometry cubeShape)) GL_UNSIGNED_INT nullPtr
+          glDrawElements GL_TRIANGLES (geoVertCount (sGeometry cubeShape)) GL_UNSIGNED_INT nullPtr
 
       swapBuffers gpWindow
 
