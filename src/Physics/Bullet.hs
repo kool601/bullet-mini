@@ -16,7 +16,7 @@ import Foreign.Ptr
 -- import Foreign.StablePtr
 import Foreign.ForeignPtr
 import Foreign.Marshal.Array
-import Linear.Extra
+import Linear
 import Control.Monad.Trans
 import Data.Monoid
 -- import Control.Applicative
