@@ -27,6 +27,7 @@ test-suite linking
                       , containers
                       , lens
                       , mtl
+                      , linear
 -- test-suite cubes
 --   type:                exitcode-stdio-1.0
 --   main-is:             Cubes.hs
@@ -169,9 +170,11 @@ library
     -- extra-libraries: libstdc++-6 libgcc_s_sjlj-1
     -- extra-lib-dirs:  C:\msys64\usr\local\ghc\mingw\lib
     -- extra-lib-dirs:  C:\msys64\usr\local\ghc\mingw\lib\bin
-    -- extra-lib-dirs:    C:\msys64\usr\local\ghc\mingw\bin
+    extra-lib-dirs:  C:\msys64\usr\local\ghc\mingw\bin
     -- Allows us to not link libgcc_s_sjlj-1
     cc-options:        -fno-exceptions
+    -- ld-options: -L/mingw64/bin -llibmingwex -llibstdc++-6
+    -- ghc-options: -LC:\msys64\usr\local\ghc\mingw\x86_64-w64-mingw32\lib -lmingwex
   if os(osx)
     extra-libraries: c++
   ghc-options:         -Wall -O2
