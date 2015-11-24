@@ -10,5 +10,4 @@ packages:
 - ../lens-extra
 - ../halive
 - ../openvr-hs
-- ../bindings-GLFW-3.1.1.4
 resolver: nightly-2015-11-03

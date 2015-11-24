@@ -164,15 +164,17 @@ library
   hs-source-dirs:      src
   default-language:    Haskell2010
   if os(windows)
+    -- Just this works now with GHC 7.10.3, and you shouldn't need to mess with PATH : )
+    extra-libraries:   libstdc++-6
+    cc-options:        -fno-exceptions
+    -- A graveyard of attempts kept for reference while I debug the GHC linker...
     -- extra-libraries: stdc++
     -- extra-libraries: libstdc++
-    extra-libraries:   libstdc++-6
     -- extra-libraries: libstdc++-6 libgcc_s_sjlj-1
     -- extra-lib-dirs:  C:\msys64\usr\local\ghc\mingw\lib
     -- extra-lib-dirs:  C:\msys64\usr\local\ghc\mingw\lib\bin
-    extra-lib-dirs:  C:\msys64\usr\local\ghc\mingw\bin
+    -- extra-lib-dirs:  C:\msys64\usr\local\ghc\mingw\bin
     -- Allows us to not link libgcc_s_sjlj-1
-    cc-options:        -fno-exceptions
     -- ld-options: -L/mingw64/bin -llibmingwex -llibstdc++-6
     -- ghc-options: -LC:\msys64\usr\local\ghc\mingw\x86_64-w64-mingw32\lib -lmingwex
   if os(osx)
