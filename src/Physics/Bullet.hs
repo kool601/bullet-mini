@@ -208,14 +208,16 @@ removeCube (DynamicsWorld dynamicsWorld) (RigidBody rigidBody) = liftIO [C.block
   }|]
 
 -- NOTE: We'll need some type safety for RigidBodies, but we've only got cubes at the moment
-setCubeScale :: (MonadIO m, Real a) => RigidBody -> V3 a -> m ()
-setCubeScale (RigidBody rigidBody) scale = liftIO [C.block| void {
+setCubeScale :: (MonadIO m, Real a) => DynamicsWorld -> RigidBody -> V3 a -> m ()
+setCubeScale (DynamicsWorld dynamicsWorld) (RigidBody rigidBody) scale = liftIO [C.block| void {
+  btDiscreteDynamicsWorld* dynamicsWorld = (btDiscreteDynamicsWorld *) $( void *dynamicsWorld );
   btRigidBody* rigidBody = (btRigidBody *) $(void *rigidBody);
   btVector3 scale = btVector3( $(float x) , $(float y) , $(float z) );
 
   btBoxShape *boxShape = (btBoxShape *)rigidBody->getCollisionShape();
 
   boxShape->setLocalScaling(scale);
+  dynamicsWorld->updateSingleAabb(rigidBody);
   }|]
   where
     (V3 x y z) = realToFrac <$> scale
