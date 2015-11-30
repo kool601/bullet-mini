@@ -30,8 +30,10 @@ newWorld = World
 
 main :: IO ()
 main = do
+
+  let fov = 45
   
-  VRPal{..} <- initVRPal "Bullet" NoGCPerFrame []
+  VRPal{..} <- initVRPal "Bullet" []
 
   cubeProg  <- createShaderProgram "test/shared/cube.vert" "test/shared/cube.frag"
   cubeGeo   <- cubeGeometry (1 :: V3 GLfloat) (V3 1 1 1)
@@ -59,18 +61,25 @@ main = do
         , _cubColor = V4 1 0 1 1
         }
     whileWindow gpWindow $ do
+      projMat <- getWindowProjection gpWindow fov 0.1 1000
+      viewMat <- viewMatrixFromPose <$> use wldPlayer
+      (x,y,w,h) <- getWindowViewport gpWindow
+      glViewport x y w h
       
       processEvents gpEvents $ \e -> do
         case e of
-          (MouseButton _ _ _) -> do mBodyID <- mapM getRigidBodyID =<< rayTestClosest dynamicsWorld =<< posToRay =<< getCursorPos gpWindow
-                                    case mBodyID of
-                                      Nothing -> return ()
-                                      Just bodyID -> do
-                                        liftIO $ putStrLn $ "Clicked Cube " ++ (show (unRigidBodyID bodyID))
+          (MouseButton _ _ _) -> do 
+            cursorPos  <- getCursorPos gpWindow
+            playerPose <- use wldPlayer
+            cursorRay <- uncurry Ray <$> windowPosToWorldRay gpWindow projMat playerPose cursorPos
 
-                                        let cubeID = fromIntegral (unRigidBodyID bodyID)
-                                        [r,g,b] <- liftIO (replicateM 3 randomIO)
-                                        wldCubes . at cubeID . traverse . cubColor .= V4 r g b 1
+            mBodyID <- mapM getRigidBodyID =<< rayTestClosest dynamicsWorld cursorRay
+            forM_ mBodyID $ \bodyID -> do
+              liftIO $ putStrLn $ "Clicked Cube " ++ (show (unRigidBodyID bodyID))
+
+              let cubeID = fromIntegral (unRigidBodyID bodyID)
+              [r,g,b] <- liftIO (replicateM 3 randomIO)
+              wldCubes . at cubeID . traverse . cubColor .= V4 r g b 1
           _                   -> closeOnEscape gpWindow e
           
       applyMouseLook gpWindow wldPlayer
@@ -80,10 +89,7 @@ main = do
 
       glClear (GL_COLOR_BUFFER_BIT .|. GL_DEPTH_BUFFER_BIT)
 
-      projMat <- getWindowProjection gpWindow 45 0.1 1000
-      viewMat <- viewMatrixFromPose <$> use wldPlayer
-      (x,y,w,h) <- getWindowViewport gpWindow
-      glViewport x y w h
+      
       
       uniformV3 uCamera =<< use (wldPlayer . posPosition)
 
@@ -104,8 +110,9 @@ main = do
 
       swapBuffers gpWindow
 
+-- | Returns a ray from the given Pose's position along the Pose's orientation
+poseToRay :: (RealFloat a, Conjugate a) => Pose a -> Ray a
+poseToRay pose = Ray fromPos toPos
+  where fromPos = pose ^. posPosition
+        toPos   = rotate (pose ^. posOrientation) (fromPos & _z -~ 1000)
 
-posToRay (x, y) = do
-  pose <- use wldPlayer
-  let position = pose ^. posPosition
-  return $ Ray position (rotate (pose ^. posOrientation) (position & _z -~ 1000))

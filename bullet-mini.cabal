@@ -28,28 +28,28 @@ test-suite linking
                       , lens
                       , mtl
                       , linear
--- test-suite cubes
---   type:                exitcode-stdio-1.0
---   main-is:             Cubes.hs
---   hs-source-dirs:      test, test/shared
---   if os(windows)
---     buildable: False
---   default-language:    Haskell2010
---   other-modules:       Types
---                        CubeUniforms
---   ghc-options:         -Wall -O2
---   build-depends:        base
---                       , bullet-mini
---                       , containers
---                       , vr-pal
---                       , gl
---                       , gl-pal
---                       , glfw-pal
---                       , lens-extra
---                       , linear-extra
---                       , mtl
---                       , random
--- 
+test-suite cubes
+  type:                exitcode-stdio-1.0
+  main-is:             Cubes.hs
+  hs-source-dirs:      test, test/shared
+  if os(windows)
+    buildable: False
+  default-language:    Haskell2010
+  other-modules:       Types
+                       CubeUniforms
+  ghc-options:         -Wall -O2
+  build-depends:        base
+                      , bullet-mini
+                      , containers
+                      , vr-pal
+                      , gl
+                      , gl-pal
+                      , glfw-pal
+                      , lens-extra
+                      , linear-extra
+                      , mtl
+                      , random
+
 -- test-suite collisions
 --   type:                exitcode-stdio-1.0
 --   main-is:             Collisions.hs
