@@ -36,14 +36,14 @@ main = do
   VRPal{..} <- initVRPal "Bullet" []
 
   cubeProg  <- createShaderProgram "test/shared/cube.vert" "test/shared/cube.frag"
-  cubeGeo   <- cubeGeometry (1 :: V3 GLfloat) (V3 1 1 1)
+  cubeGeo   <- cubeGeometry (V3 1 1 0.1) 1
   cubeShape <- makeShape cubeGeo cubeProg
+
   let Uniforms{..} = sUniforms cubeShape
   useProgram (sProgram cubeShape)
 
   dynamicsWorld  <- createDynamicsWorld mempty
   _              <- addGroundPlane dynamicsWorld (RigidBodyID 0) 0
-  
 
   glEnable GL_DEPTH_TEST
 
@@ -51,10 +51,11 @@ main = do
 
 
   void . flip runStateT newWorld $ do 
-    forM_ [1..1000] $ \i -> do
+    forM_ [1..100] $ \i -> do
       rigidBody <- addCube dynamicsWorld (RigidBodyID i) mempty 
         { pcPosition = V3 0 20 0
         , pcRotation = Quaternion 0.5 (V3 0 1 1)
+        , pcScale = V3 1 1 0.1
         }
       wldCubes . at (fromIntegral i) ?= Cube
         { _cubBody = rigidBody
@@ -68,21 +69,18 @@ main = do
       
       processEvents gpEvents $ \e -> do
         closeOnEscape gpWindow e
-        case e of
-          (MouseButton _ _ _) -> do 
+        onMouseDown e $ \_ -> do
+          playerPose <- use wldPlayer
+          cursorRay  <- cursorPosToWorldRay gpWindow projMat playerPose
 
-            playerPose <- use wldPlayer
-            cursorRay  <- cursorPosToWorldRay gpWindow projMat playerPose
+          mBodyID <- mapM getRigidBodyID =<< rayTestClosest dynamicsWorld cursorRay
 
-            mBodyID <- mapM getRigidBodyID =<< rayTestClosest dynamicsWorld cursorRay
+          forM_ mBodyID $ \bodyID -> do
+            liftIO $ putStrLn $ "Clicked Cube " ++ (show (unRigidBodyID bodyID))
 
-            forM_ mBodyID $ \bodyID -> do
-              liftIO $ putStrLn $ "Clicked Cube " ++ (show (unRigidBodyID bodyID))
-
-              let cubeID = fromIntegral (unRigidBodyID bodyID)
-              [r,g,b] <- liftIO (replicateM 3 randomIO)
-              wldCubes . at cubeID . traverse . cubColor .= V4 r g b 1
-          _ -> return ()
+            let cubeID = fromIntegral (unRigidBodyID bodyID)
+            [r,g,b] <- liftIO (replicateM 3 randomIO)
+            wldCubes . at cubeID . traverse . cubColor .= V4 r g b 1
       
       applyMouseLook gpWindow wldPlayer
       applyWASD gpWindow wldPlayer        
@@ -95,7 +93,6 @@ main = do
 
       let viewProj = projMat !*! viewMat
 
-      -- Begin cube batch
       withVAO (sVAO cubeShape) $ do
         cubes <- Map.elems <$> use wldCubes
         forM_ cubes $ \cube -> do
@@ -109,6 +106,3 @@ main = do
           glDrawElements GL_TRIANGLES (geoVertCount (sGeometry cubeShape)) GL_UNSIGNED_INT nullPtr
 
       swapBuffers gpWindow
-
-
-

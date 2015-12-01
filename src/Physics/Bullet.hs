@@ -16,7 +16,7 @@ import Foreign.Ptr
 -- import Foreign.StablePtr
 import Foreign.ForeignPtr
 import Foreign.Marshal.Array
-import Linear
+import Linear.Extra
 import Control.Monad.Trans
 import Data.Monoid
 -- import Control.Applicative
@@ -334,10 +334,6 @@ getCollisions (DynamicsWorld dynamicsWorld) = liftIO $ do
     } |]
 
   readIORef collisionsRef
-
-data Ray a = Ray { rayFrom :: !(V3 a)
-                 , rayTo   :: !(V3 a)
-                 } deriving (Show, Eq)
 
 rayTestClosest :: (Real a, MonadIO m) => DynamicsWorld -> Ray a -> m (Maybe RigidBody)
 rayTestClosest (DynamicsWorld dynamicsWorld) ray = liftIO $
