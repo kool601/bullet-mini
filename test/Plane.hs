@@ -73,14 +73,23 @@ main = do
           playerPose <- use wldPlayer
           cursorRay  <- cursorPosToWorldRay gpWindow projMat playerPose
 
-          mBodyID <- mapM getRigidBodyID =<< rayTestClosest dynamicsWorld cursorRay
+          mRayResult <- rayTestClosest dynamicsWorld cursorRay
+          forM_ mRayResult $ \rayResult -> do
+            bodyID <- getRigidBodyID (rrRigidBody rayResult)
+            mCube <- use (wldCubes . at (fromIntegral (unRigidBodyID bodyID)))
+            forM_ mCube $ \cube -> do
 
-          forM_ mBodyID $ \bodyID -> do
-            liftIO $ putStrLn $ "Clicked Cube " ++ (show (unRigidBodyID bodyID))
+              putStrLnIO $ "Clicked Cube " ++ (show (unRigidBodyID bodyID))
 
-            let cubeID = fromIntegral (unRigidBodyID bodyID)
-            [r,g,b] <- liftIO (replicateM 3 randomIO)
-            wldCubes . at cubeID . traverse . cubColor .= V4 r g b 1
+
+              (position, orientation) <- getBodyState (cube ^. cubBody)
+              let model = mkTransformation orientation position
+                  invModel = safeInv44 model
+              printIO $ normalizePoint (invModel !* point (rrLocation rayResult))
+
+              let cubeID = fromIntegral (unRigidBodyID bodyID)
+              [r,g,b] <- liftIO (replicateM 3 randomIO)
+              wldCubes . at cubeID . traverse . cubColor .= V4 r g b 1
       
       applyMouseLook gpWindow wldPlayer
       applyWASD gpWindow wldPlayer        
@@ -100,7 +109,7 @@ main = do
 
           let model = mkTransformation orientation position
           uniformM44 uModelViewProjection (viewProj !*! model)
-          uniformM44 uInverseModel        (fromMaybe model (inv44 model))
+          uniformM44 uInverseModel        (safeInv44 model)
           uniformM44 uModel               model
           uniformV4  uDiffuse             (cube ^. cubColor)
           glDrawElements GL_TRIANGLES (geoVertCount (sGeometry cubeShape)) GL_UNSIGNED_INT nullPtr

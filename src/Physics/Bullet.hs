@@ -276,9 +276,9 @@ getCollisions (DynamicsWorld dynamicsWorld) = liftIO $ do
               -- , cbBodyB = RigidBody objB
               { cbBodyAID = RigidBodyID (fromIntegral objAID)
               , cbBodyBID = RigidBodyID (fromIntegral objBID)
-              , cbPositionOnA = V3 (realToFrac aX) (realToFrac aY) (realToFrac aZ)
-              , cbPositionOnB = V3 (realToFrac bX) (realToFrac bY) (realToFrac bZ)
-              , cbNormalOnB   = V3 (realToFrac nX) (realToFrac nY) (realToFrac nZ)
+              , cbPositionOnA    = realToFrac <$> V3 aX aY aZ
+              , cbPositionOnB    = realToFrac <$> V3 bX bY bZ
+              , cbNormalOnB      = realToFrac <$> V3 nX nY nZ
               , cbAppliedImpulse = realToFrac impulse
               }
         modifyIORef collisionsRef (collision:)
@@ -309,21 +309,24 @@ getCollisions (DynamicsWorld dynamicsWorld) = liftIO $ do
 
           btScalar impulse = pt.getAppliedImpulse();
 
-          // fun:(void (*captureCollision)(void*, void*, int, int, float, float, float, float, float, float, float, float, float, float))(
+          // fun:(void (*captureCollision)(void*, void*, 
+          //                               int, int, 
+          //                               float, float, float, 
+          //                               float, float, float, 
+          //                               float, float, float, 
+          //                               float))(
           //   (void *)obA,
           //   (void *)obB,
-          $fun:(void (*captureCollision)(int, int, float, float, float, float, float, float, float, float, float, float))(
+          $fun:(void (*captureCollision)(int, int, 
+                                         float, float, float, 
+                                         float, float, float, 
+                                         float, float, float, 
+                                         float))(
             obA->getUserIndex(),
             obB->getUserIndex(),
-            ptA.getX(),
-            ptA.getY(),
-            ptA.getZ(),
-            ptB.getX(),
-            ptB.getY(),
-            ptB.getZ(),
-            nmB.getX(),
-            nmB.getY(),
-            nmB.getZ(),
+            ptA.getX(), ptA.getY(), ptA.getZ(),
+            ptB.getX(), ptB.getY(), ptB.getZ(), 
+            nmB.getX(), nmB.getY(), nmB.getZ(),
             impulse
             );
         }
@@ -335,20 +338,42 @@ getCollisions (DynamicsWorld dynamicsWorld) = liftIO $ do
 
   readIORef collisionsRef
 
-rayTestClosest :: (Real a, MonadIO m) => DynamicsWorld -> Ray a -> m (Maybe RigidBody)
-rayTestClosest (DynamicsWorld dynamicsWorld) ray = liftIO $
-  toRigid <$> [C.block| void * {
+data RayResult a = RayResult
+  { rrRigidBody :: RigidBody
+  , rrLocation  :: V3 a
+  , rrNormal    :: V3 a
+  }
+
+rayTestClosest :: (Fractional a, Real a, MonadIO m) => DynamicsWorld -> Ray a -> m (Maybe (RayResult a))
+rayTestClosest (DynamicsWorld dynamicsWorld) ray = liftIO $ do
+  ref <- newIORef Nothing
+  let captureRayResult bodyPtr locX locY locZ norX norY norZ = if bodyPtr == nullPtr
+        then return ()
+        else writeIORef ref $ Just $ RayResult
+              { rrRigidBody = RigidBody bodyPtr
+              , rrLocation  = realToFrac <$> V3 locX locY locZ
+              , rrNormal    = realToFrac <$> V3 norX norY norZ
+              }
+  [C.block| void {
     btCollisionWorld* world = (btCollisionWorld *)$(void *dynamicsWorld);
     btVector3 from = btVector3($(float fx), $(float fy), $(float fz));
-    btVector3 to = btVector3($(float tx), $(float ty), $(float tz));
+    btVector3 to   = btVector3($(float tx), $(float ty), $(float tz));
     
     btCollisionWorld::ClosestRayResultCallback callback(from, to);
     world->rayTest(from, to, callback);
-    return (btCollisionObject *)callback.m_collisionObject;
+
+    btVector3 point  = callback.m_hitPointWorld;
+    btVector3 normal = callback.m_hitNormalWorld;
+    $fun:(void (*captureRayResult)(void *, float, float, float, 
+                                           float, float, float))(
+            (void *)callback.m_collisionObject,
+            point.getX(),  point.getY(),  point.getZ(),
+            normal.getX(), normal.getY(), normal.getZ()
+            );
   }|]
+  readIORef ref
   where (V3 fx fy fz) = realToFrac <$> rayFrom ray
         (V3 tx ty tz) = realToFrac <$> rayTo ray
-        toRigid ptr = if ptr == nullPtr then Nothing else Just (RigidBody ptr)
 
 getBodyState :: (Fractional a, MonadIO m) => RigidBody -> m (V3 a, Quaternion a)
 getBodyState (RigidBody rigidBody) = do
