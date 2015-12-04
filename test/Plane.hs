@@ -18,13 +18,13 @@ import Types
 import Physics.Bullet
 
 data Uniforms = Uniforms
-  { uModelViewProjection :: UniformLocation (M44 GLfloat)
-  , uInverseModel        :: UniformLocation (M44 GLfloat)
-  , uModel               :: UniformLocation (M44 GLfloat)
-  , uCamera              :: UniformLocation (V3  GLfloat)
-  , uDiffuse             :: UniformLocation (V4  GLfloat)
-  , uCubeHit             :: UniformLocation (V3  GLfloat)
-  } deriving (Data)
+    { uModelViewProjection :: UniformLocation (M44 GLfloat)
+    , uInverseModel        :: UniformLocation (M44 GLfloat)
+    , uModel               :: UniformLocation (M44 GLfloat)
+    , uCamera              :: UniformLocation (V3  GLfloat)
+    , uDiffuse             :: UniformLocation (V4  GLfloat)
+    , uCubeHit             :: UniformLocation (V3  GLfloat)
+    } deriving (Data)
 
 data World = World
     { _wldPlayer   :: !(Pose GLfloat)
@@ -95,9 +95,8 @@ main = do
           
                             (position, orientation) <- getBodyState (cube ^. cubBody)
                             let model = mkTransformation orientation position
-                                -- invModel = safeInv44 model
                                 -- Convert the hit location into model space
-                                -- pointOnModel = normalizePoint (invModel !* point (rrLocation rayResult))
+                                -- pointOnModel = worldPointToModelPoint model (rrLocation rayResult)
                                 worldHit = rrLocation rayResult
                             -- printIO pointOnModel
           
