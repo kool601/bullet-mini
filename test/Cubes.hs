@@ -76,7 +76,7 @@ main = do
       processEvents gpEvents $ \e -> do
         closeOnEscape gpWindow e
         case e of
-          (MouseButton _ _ _) -> do 
+          onMouseDown e $ \_ -> do
 
             playerPose <- use wldPlayer
             cursorRay  <- cursorPosToWorldRay gpWindow projMat playerPose
