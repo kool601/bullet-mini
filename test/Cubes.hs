@@ -75,8 +75,8 @@ main = do
       
       processEvents gpEvents $ \e -> do
         closeOnEscape gpWindow e
-        case e of
-          onMouseDown e $ \_ -> do
+        
+        onMouseDown e $ \_ -> do
 
             playerPose <- use wldPlayer
             cursorRay  <- cursorPosToWorldRay gpWindow projMat playerPose
@@ -90,7 +90,6 @@ main = do
               let cubeID = fromIntegral (unCollisionObjectID bodyID)
               [r,g,b] <- liftIO (replicateM 3 randomIO)
               wldCubes . at cubeID . traverse . cubColor .= V4 r g b 1
-          _ -> return ()
       
       applyMouseLook gpWindow wldPlayer
       applyWASD gpWindow wldPlayer        

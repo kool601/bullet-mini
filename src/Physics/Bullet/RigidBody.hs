@@ -215,9 +215,9 @@ setRigidBodyWorldTransform :: (Real a, MonadIO m) => RigidBody -> V3 a -> Quater
 setRigidBodyWorldTransform (toCollisionObjectPointer -> rigidBody) position rotation = liftIO [C.block| void {
   btRigidBody *rigidBody     = (btRigidBody *) $(void *rigidBody);
 
-  btQuaternion q = btQuaternion( $( float qx ) , $( float qy ), $( float qz ), $( float qw ) );
-  btVector3    p = btVector3( $( float x ) , $( float y ) , $( float z ) );
-  rigidBody -> getMotionState() -> setWorldTransform( btTransform(q , p) );
+  btQuaternion q = btQuaternion($(float qx), $(float qy), $(float qz), $(float qw));
+  btVector3    p = btVector3($(float x), $(float y), $(float z));
+  rigidBody->getMotionState()->setWorldTransform(btTransform(q, p));
 
   }|]
   where

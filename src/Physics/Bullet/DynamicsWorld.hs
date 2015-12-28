@@ -31,7 +31,7 @@ https://github.com/bulletphysics/bullet3/blob/master/docs/Bullet_User_Manual.pdf
 C.context (C.cppCtx <> C.funCtx)
 
 C.include "<btBulletDynamicsCommon.h>"
-
+C.include "<BulletCollision/CollisionDispatch/btGhostObject.h>"
 
 
 createDynamicsWorld :: (Functor m, MonadIO m) =>  DynamicsWorldConfig -> m DynamicsWorld 
@@ -48,6 +48,10 @@ createDynamicsWorld DynamicsWorldConfig{..} = DynamicsWorld <$> liftIO [C.block|
     dispatcher, broadphase, solver, collisionConfiguration);
 
   dynamicsWorld->setGravity(btVector3(0,  $( float g ), 0));
+
+  // This is required to use btGhostObjects
+  dynamicsWorld->getPairCache()->setInternalGhostPairCallback(
+   new btGhostPairCallback());
 
   return dynamicsWorld;
 

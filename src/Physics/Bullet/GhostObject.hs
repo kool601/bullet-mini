@@ -29,7 +29,7 @@ addGhostObject (DynamicsWorld dynamicsWorld) (fromIntegral -> collisionObjectID)
       
         btDiscreteDynamicsWorld *dynamicsWorld = (btDiscreteDynamicsWorld *) $(void *dynamicsWorld);
         btCollisionShape        *collider      = (btCollisionShape *) $(void *collisionShape);
-      
+        
         btCollisionObject *collisionObject = new btGhostObject();
 
         btQuaternion q = btQuaternion($(float qx), $(float qy), $(float qz), $(float qw));
@@ -38,12 +38,18 @@ addGhostObject (DynamicsWorld dynamicsWorld) (fromIntegral -> collisionObjectID)
         collisionObject->setWorldTransform(btTransform(q, p));
       
         // Attach the given RigidBodyID
-        collisionObject         -> setUserIndex($(int collisionObjectID));
+        collisionObject->setUserIndex($(int collisionObjectID));
+
+        collisionObject->setCollisionShape(collider);
+
+        collisionObject->setCollisionFlags(collisionObject->getCollisionFlags() |
+            btGhostObject::CF_NO_CONTACT_RESPONSE);
       
-        dynamicsWorld           -> addCollisionObject(
+        dynamicsWorld->addCollisionObject(
             collisionObject, 
             $(short int rbCollisionGroup), 
             $(short int rbCollisionMask));
+
         
         return collisionObject;
       
@@ -53,4 +59,9 @@ addGhostObject (DynamicsWorld dynamicsWorld) (fromIntegral -> collisionObjectID)
       (Quaternion qw (V3 qx qy qz)) = realToFrac <$> rbRotation
 
 
-
+getGhostObjectOverlapping (toCollisionObjectPointer -> ghostObject) = liftIO $ do
+    [C.block| void * {
+        btGhostObject *ghostObject = (btGhostObject *)$(void *ghostObject);
+        printf("Overlapping: %i\n", ghostObject->getNumOverlappingObjects());
+        return 0;
+    }|]    
