@@ -1,4 +1,5 @@
-src/Physics/Bullet.cpp
+src/Physics/Bullet/DynamicsWorld.cpp
+src/Physics/Bullet/SpringConstraint.cpp
 cabal.sandbox.config
 dist
 build

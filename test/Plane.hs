@@ -135,4 +135,4 @@ main = do
                     glDrawElements GL_TRIANGLES (geoVertCount (sGeometry cubeShape)) GL_UNSIGNED_INT nullPtr
                     
             swapBuffers gpWindow
-  
+

@@ -5,7 +5,6 @@ packages:
 - ../glfw-pal
 - ../vr-pal
 - ../gl-pal
-- ../hydra-hs
 - ../linear-extra
 - ../lens-extra
 - ../halive

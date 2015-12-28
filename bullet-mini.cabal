@@ -177,6 +177,9 @@ test-suite plane
 
 library
   exposed-modules:     Physics.Bullet
+                       Physics.Bullet.DynamicsWorld
+                       Physics.Bullet.SpringConstraint
+                       Physics.Bullet.Types
   build-depends:       base
                      , binary
                      , linear-extra
@@ -207,7 +210,8 @@ library
   include-dirs:
     bullet3/src
   c-sources:
-    src/Physics/Bullet.cpp
+    src/Physics/Bullet/DynamicsWorld.cpp
+    src/Physics/Bullet/SpringConstraint.cpp
     bullet3/src/BulletDynamics/Character/btKinematicCharacterController.cpp
     bullet3/src/BulletDynamics/ConstraintSolver/btConeTwistConstraint.cpp
     bullet3/src/BulletDynamics/ConstraintSolver/btContactConstraint.cpp
