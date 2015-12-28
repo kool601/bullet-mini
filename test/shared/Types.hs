@@ -5,10 +5,10 @@ module Types where
 import Physics.Bullet
 import Graphics.GL.Pal
 import Control.Lens.Extra
+import GHC.Word
 
 
-
-type ObjectID = Int
+type ObjectID = Word32
 
 data Cube = Cube
   { _cubColor :: !(V4 GLfloat)

@@ -11,7 +11,7 @@
 module Physics.Bullet.GhostObject where
 
 import qualified Language.C.Inline.Cpp as C
-
+import Foreign
 import Foreign.C
 import Linear.Extra
 import Control.Monad.Trans
@@ -22,6 +22,11 @@ C.context (C.cppCtx <> C.funCtx)
 
 C.include "<btBulletDynamicsCommon.h>"
 C.include "<BulletCollision/CollisionDispatch/btGhostObject.h>"
+
+withArray_ :: (Storable a) => Int -> (Ptr a -> IO ()) -> IO [a]
+withArray_ size action = allocaArray size $ \ptr -> do
+  _ <- action ptr
+  peekArray size ptr
 
 addGhostObject :: (Functor m, MonadIO m) => DynamicsWorld -> CollisionObjectID -> CollisionShape -> RigidBodyConfig -> m GhostObject
 addGhostObject (DynamicsWorld dynamicsWorld) (fromIntegral -> collisionObjectID) (CollisionShape collisionShape) RigidBodyConfig{..} = liftIO $ 
@@ -59,9 +64,23 @@ addGhostObject (DynamicsWorld dynamicsWorld) (fromIntegral -> collisionObjectID)
       (Quaternion qw (V3 qx qy qz)) = realToFrac <$> rbRotation
 
 
-getGhostObjectOverlapping (toCollisionObjectPointer -> ghostObject) = liftIO $ do
-    [C.block| void * {
+getGhostObjectNumOverlapping :: (Num a, MonadIO m) => GhostObject -> m a
+getGhostObjectNumOverlapping (toCollisionObjectPointer -> ghostObject) = liftIO $ 
+    fromIntegral <$> [C.block| int {
         btGhostObject *ghostObject = (btGhostObject *)$(void *ghostObject);
-        printf("Overlapping: %i\n", ghostObject->getNumOverlappingObjects());
-        return 0;
-    }|]    
+        return ghostObject->getNumOverlappingObjects();
+    }|]
+
+getGhostObjectOverlapping :: (MonadIO m) => GhostObject -> m [CollisionObject]
+getGhostObjectOverlapping ghost@(toCollisionObjectPointer -> ghostObject) = liftIO $ do
+    count <- getGhostObjectNumOverlapping ghost
+    
+    results <- withArray_ (fromIntegral count) $ \ptr -> do
+        [C.block| void {
+            btGhostObject *ghostObject = (btGhostObject *)$(void *ghostObject);
+            btCollisionObject **out = (btCollisionObject **)$(void **ptr);
+            for (int i = 0; i < $(int count); i++) {
+                out[i] = ghostObject->getOverlappingObject(i);
+            }
+        }|]
+    return $ map CollisionObject results
