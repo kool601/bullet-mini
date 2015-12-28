@@ -114,7 +114,7 @@ main = do
       y <- (+ 20) . (* 5) . sin . (\x->x::Double) . realToFrac . utctDayTime <$> liftIO getCurrentTime
       setRigidBodyWorldTransform movingRigidBody (V3 0 y 5) (axisAngle (V3 0 1 0) 0)
 
-      stepSimulation dynamicsWorld
+      stepSimulation dynamicsWorld 90
 
       -- Set all cubes to white
       wldCubes . traverse . cubColor .= V4 1 1 1 1

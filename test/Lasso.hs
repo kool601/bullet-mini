@@ -122,7 +122,7 @@ main = do
       -- setSpringWorldPose spring (V3 0 y 5) (axisAngle (V3 0 1 0) 0)
 
       
-      stepSimulation dynamicsWorld
+      stepSimulation dynamicsWorld 90
 
       -- Render Cubes
       projMat <- getWindowProjection gpWindow 45 0.1 1000

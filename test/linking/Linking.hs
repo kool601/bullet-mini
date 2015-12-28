@@ -43,7 +43,7 @@ main = do
         }
     forever $ do
       
-      stepSimulation dynamicsWorld
+      stepSimulation dynamicsWorld 90
 
       cubes <- Map.elems <$> use wldCubes
       forM_ cubes $ \cube -> do

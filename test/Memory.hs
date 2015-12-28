@@ -21,7 +21,7 @@ main = do
       }
 
   replicateM_ 600 $ do
-    stepSimulation dynamicsWorld
+    stepSimulation dynamicsWorld 90
     forM_ cubeBodies $ \rigidBody -> do
       (pos, orient) <- getBodyState rigidBody
       return (pos, orient)
@@ -36,7 +36,7 @@ main = do
       }
 
   replicateM_ 600 $ do
-    stepSimulation dynamicsWorld
+    stepSimulation dynamicsWorld 90
     forM_ cubeBodies2 $ \rigidBody -> do
       (pos, orient) <- getBodyState rigidBody
       return (pos, orient)

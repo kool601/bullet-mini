@@ -92,7 +92,7 @@ main = do
 
 
       
-      stepSimulation dynamicsWorld
+      stepSimulation dynamicsWorld 90
 
       -- Render Cubes
       projMat <- getWindowProjection gpWindow 45 0.1 1000

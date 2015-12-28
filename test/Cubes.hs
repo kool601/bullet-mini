@@ -6,8 +6,8 @@ import Graphics.VR.Pal
 
 import Control.Monad
 import Control.Monad.State
+import Control.Monad.Reader
 import Control.Lens.Extra
-import Data.Maybe
 import Data.Map (Map)
 import qualified Data.Map as Map
 import System.Random
@@ -28,6 +28,10 @@ newWorld = World
     (Pose (V3 0 20 60) (axisAngle (V3 0 1 0) 0))
     mempty
 
+planeM44 :: M44 GLfloat
+planeM44 = transformationFromPose $ newPose 
+  & posOrientation .~ axisAngle (V3 1 0 0) (-pi/2)
+
 main :: IO ()
 main = do
 
@@ -35,14 +39,16 @@ main = do
   
   VRPal{..} <- initVRPal "Bullet" []
 
-  cubeProg  <- createShaderProgram "test/shared/cube.vert" "test/shared/cube.frag"
+  shader    <- createShaderProgram "test/shared/cube.vert" "test/shared/cube.frag"
   cubeGeo   <- cubeGeometry (1 :: V3 GLfloat) (V3 1 1 1)
-  cubeShape <- makeShape cubeGeo cubeProg
-  let Uniforms{..} = sUniforms cubeShape
-  useProgram (sProgram cubeShape)
+  cubeShape <- makeShape cubeGeo shader :: IO (Shape Uniforms)
+
+  planeGeo   <- planeGeometry 1000 (V3 0 0 1) (V3 0 1 0) 1
+  planeShape <- makeShape planeGeo shader :: IO (Shape Uniforms)
+  
 
   dynamicsWorld  <- createDynamicsWorld mempty
-  _              <- addGroundPlane dynamicsWorld (RigidBodyID 0) 0
+  _              <- addGroundPlane dynamicsWorld (CollisionObjectID 0) 0
   
 
   glEnable GL_DEPTH_TEST
@@ -51,10 +57,11 @@ main = do
 
 
   void . flip runStateT newWorld $ do 
+    boxShape <- createBoxShape (1 :: V3 GLfloat)
     forM_ [1..1000] $ \i -> do
-      rigidBody <- addCube dynamicsWorld (RigidBodyID i) mempty 
-        { pcPosition = V3 0 20 0
-        , pcRotation = Quaternion 0.5 (V3 0 1 1)
+      rigidBody <- addRigidBody dynamicsWorld (CollisionObjectID i) boxShape mempty 
+        { rbPosition = V3 0 20 0
+        , rbRotation = Quaternion 0.5 (V3 0 1 1)
         }
       wldCubes . at (fromIntegral i) ?= Cube
         { _cubBody = rigidBody
@@ -74,12 +81,13 @@ main = do
             playerPose <- use wldPlayer
             cursorRay  <- cursorPosToWorldRay gpWindow projMat playerPose
 
-            mBodyID <- mapM getRigidBodyID =<< rayTestClosest dynamicsWorld cursorRay
+            mBodyID <- mapM (getCollisionObjectID . rrCollisionObject) =<< rayTestClosest dynamicsWorld cursorRay
 
             forM_ mBodyID $ \bodyID -> do
-              liftIO $ putStrLn $ "Clicked Cube " ++ (show (unRigidBodyID bodyID))
+              liftIO $ putStrLn $ "Clicked Object " ++ (show (unCollisionObjectID bodyID))
 
-              let cubeID = fromIntegral (unRigidBodyID bodyID)
+
+              let cubeID = fromIntegral (unCollisionObjectID bodyID)
               [r,g,b] <- liftIO (replicateM 3 randomIO)
               wldCubes . at cubeID . traverse . cubColor .= V4 r g b 1
           _ -> return ()
@@ -87,26 +95,39 @@ main = do
       applyMouseLook gpWindow wldPlayer
       applyWASD gpWindow wldPlayer        
 
-      stepSimulation dynamicsWorld
+      stepSimulation dynamicsWorld 90
 
       glClear (GL_COLOR_BUFFER_BIT .|. GL_DEPTH_BUFFER_BIT)
 
-      uniformV3 uCamera =<< use (wldPlayer . posPosition)
+      
 
       let viewProj = projMat !*! viewMat
 
       -- Begin cube batch
-      withVAO (sVAO cubeShape) $ do
+      withShape cubeShape $ do
+        Uniforms{..} <- asks sUniforms
+        uniformV3 uCamera =<< use (wldPlayer . posPosition)
         cubes <- Map.elems <$> use wldCubes
+
         forM_ cubes $ \cube -> do
           (position, orientation) <- getBodyState (cube ^. cubBody)
 
           let model = mkTransformation orientation position
           uniformM44 uModelViewProjection (viewProj !*! model)
-          uniformM44 uInverseModel        (safeInv44 model)
+          uniformM44 uInverseModel        (inv44 model)
           uniformM44 uModel               model
           uniformV4  uDiffuse             (cube ^. cubColor)
-          glDrawElements GL_TRIANGLES (geoVertCount (sGeometry cubeShape)) GL_UNSIGNED_INT nullPtr
+          drawShape
+
+      withShape planeShape $ do
+        Uniforms{..} <- asks sUniforms
+        uniformV3 uCamera =<< use (wldPlayer . posPosition)
+        let model = planeM44
+        uniformM44 uModelViewProjection (viewProj !*! model)
+        uniformM44 uInverseModel        (inv44 model)
+        uniformM44 uModel               model
+        uniformV4  uDiffuse             (V4 0.1 0.0 0.5 1)
+        drawShape
 
       swapBuffers gpWindow
 

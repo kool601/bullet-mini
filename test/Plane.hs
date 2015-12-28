@@ -109,7 +109,7 @@ main = do
             applyMouseLook gpWindow wldPlayer
             applyWASD gpWindow wldPlayer        
     
-            stepSimulation dynamicsWorld
+            stepSimulation dynamicsWorld 90
     
             glClear (GL_COLOR_BUFFER_BIT .|. GL_DEPTH_BUFFER_BIT)
     

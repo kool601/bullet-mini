@@ -178,6 +178,10 @@ test-suite plane
 library
   exposed-modules:     Physics.Bullet
                        Physics.Bullet.DynamicsWorld
+                       Physics.Bullet.RigidBody
+                       Physics.Bullet.CollisionShape
+                       Physics.Bullet.CollisionObject
+                       Physics.Bullet.GhostObject
                        Physics.Bullet.SpringConstraint
                        Physics.Bullet.Types
   build-depends:       base
@@ -211,7 +215,11 @@ library
     bullet3/src
   c-sources:
     src/Physics/Bullet/DynamicsWorld.cpp
+    src/Physics/Bullet/RigidBody.cpp
+    src/Physics/Bullet/CollisionShape.cpp
     src/Physics/Bullet/SpringConstraint.cpp
+    src/Physics/Bullet/CollisionObject.cpp
+    src/Physics/Bullet/GhostObject.cpp
     bullet3/src/BulletDynamics/Character/btKinematicCharacterController.cpp
     bullet3/src/BulletDynamics/ConstraintSolver/btConeTwistConstraint.cpp
     bullet3/src/BulletDynamics/ConstraintSolver/btContactConstraint.cpp

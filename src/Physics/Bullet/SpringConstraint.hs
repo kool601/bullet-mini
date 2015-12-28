@@ -12,18 +12,11 @@ module Physics.Bullet.SpringConstraint where
 import qualified Language.C.Inline.Cpp as C
 
 import Foreign.C
-import Foreign.Ptr
--- import Foreign.StablePtr
-import Foreign.ForeignPtr
-import Foreign.Marshal.Array
 import Linear.Extra
 import Control.Monad.Trans
 import Data.Monoid
--- import Control.Applicative
-import Data.IORef
-import Data.Binary
-import GHC.Generics
 import Physics.Bullet.Types
+
 -----------------
 -- Springs
 -- See http://bulletphysics.org/Bullet/BulletFull/classbtGeneric6DofSpring2Constraint.html
@@ -35,7 +28,7 @@ C.include "<btBulletDynamicsCommon.h>"
 
 -- | Adds a constraint between the body and (I think) its current position in the world
 addWorldSpringConstraint :: MonadIO m => DynamicsWorld -> RigidBody -> m SpringConstraint
-addWorldSpringConstraint (DynamicsWorld dynamicsWorld) (RigidBody rigidBody) = SpringConstraint <$> liftIO [C.block| void* {
+addWorldSpringConstraint (DynamicsWorld dynamicsWorld) (toCollisionObjectPointer->rigidBody) = SpringConstraint <$> liftIO [C.block| void* {
   btDiscreteDynamicsWorld* dynamicsWorld = (btDiscreteDynamicsWorld *) $( void *dynamicsWorld );
 
   btRigidBody* rigidBody = (btRigidBody *) $(void *rigidBody);
@@ -53,7 +46,7 @@ addWorldSpringConstraint (DynamicsWorld dynamicsWorld) (RigidBody rigidBody) = S
   }|]
 
 addSpringConstraint :: MonadIO m => DynamicsWorld -> RigidBody -> RigidBody -> m SpringConstraint
-addSpringConstraint (DynamicsWorld dynamicsWorld) (RigidBody rigidBodyA) (RigidBody rigidBodyB) = SpringConstraint <$> liftIO [C.block| void * {
+addSpringConstraint (DynamicsWorld dynamicsWorld) (toCollisionObjectPointer->rigidBodyA) (toCollisionObjectPointer->rigidBodyB) = SpringConstraint <$> liftIO [C.block| void * {
   btDiscreteDynamicsWorld* dynamicsWorld = (btDiscreteDynamicsWorld *) $( void *dynamicsWorld );
   btRigidBody* rigidBodyA = (btRigidBody *) $(void *rigidBodyA);
   btRigidBody* rigidBodyB = (btRigidBody *) $(void *rigidBodyB);

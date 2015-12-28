@@ -68,7 +68,7 @@ main = do
       processEvents gpEvents $ \e -> 
         closeOnEscape gpWindow e
 
-      stepSimulation dynamicsWorld
+      stepSimulation dynamicsWorld 90
 
       -- Set all cubes to white
       wldCubes . traverse . cubColor .= V4 1 1 1 1
