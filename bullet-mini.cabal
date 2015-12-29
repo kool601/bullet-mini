@@ -72,6 +72,28 @@ test-suite ghostobjects
                       , mtl
                       , random
 
+test-suite pointtopoint
+  type:                exitcode-stdio-1.0
+  main-is:             PointToPoint.hs
+  hs-source-dirs:      test, test/shared
+  if os(windows)
+    buildable: False
+  default-language:    Haskell2010
+  other-modules:       Types
+                       CubeUniforms
+  ghc-options:         -Wall -O2
+  build-depends:        base
+                      , bullet-mini
+                      , containers
+                      , vr-pal
+                      , gl
+                      , gl-pal
+                      , glfw-pal
+                      , lens-extra
+                      , linear-extra
+                      , mtl
+                      , random
+
 test-suite plane
   type:                exitcode-stdio-1.0
   main-is:             Plane.hs
@@ -205,6 +227,7 @@ library
                        Physics.Bullet.CollisionObject
                        Physics.Bullet.GhostObject
                        Physics.Bullet.SpringConstraint
+                       Physics.Bullet.PointToPointConstraint
                        Physics.Bullet.Types
   build-depends:       base
                      , binary
@@ -240,6 +263,7 @@ library
     src/Physics/Bullet/RigidBody.cpp
     src/Physics/Bullet/CollisionShape.cpp
     src/Physics/Bullet/SpringConstraint.cpp
+    src/Physics/Bullet/PointToPointConstraint.cpp
     src/Physics/Bullet/CollisionObject.cpp
     src/Physics/Bullet/GhostObject.cpp
     bullet3/src/BulletDynamics/Character/btKinematicCharacterController.cpp

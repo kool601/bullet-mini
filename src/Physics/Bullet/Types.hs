@@ -22,6 +22,7 @@ newtype CollisionObjectID = CollisionObjectID    { unCollisionObjectID   :: Word
 
 newtype DynamicsWorld    = DynamicsWorld    { unDynamicsWorld    :: Ptr () } deriving Show
 newtype SpringConstraint = SpringConstraint { unSpringConstraint :: Ptr () } deriving Show
+newtype PointToPointConstraint = PointToPointConstraint { unPointToPointConstraint :: Ptr () } deriving Show
 newtype CollisionShape   = CollisionShape   { unCollisionShape   :: Ptr () } deriving Show
 newtype CollisionObject  = CollisionObject  { unCollisionObject  :: Ptr () } deriving Show
 newtype RigidBody        = RigidBody        { unRigidBody        :: CollisionObject } deriving Show

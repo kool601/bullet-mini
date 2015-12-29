@@ -23,8 +23,7 @@ C.include "<btBulletDynamicsCommon.h>"
 
 createStaticPlaneShape :: (MonadIO m, Real a) => a -> m CollisionShape
 createStaticPlaneShape planeOffset = liftIO $ CollisionShape <$> [C.block| void * {
-    // Create a ground plane
-    btCollisionShape *collider = new btStaticPlaneShape( btVector3( 0 , 0 , 1 ) , $( float yP ));
+    btCollisionShape *collider = new btStaticPlaneShape(btVector3(0, 0, 1) , $(float yP));
     return collider;
     }|]
     where
@@ -32,11 +31,15 @@ createStaticPlaneShape planeOffset = liftIO $ CollisionShape <$> [C.block| void 
 
 createBoxShape :: (MonadIO m, Fractional a, Real a) => V3 a -> m CollisionShape
 createBoxShape size = liftIO $ CollisionShape <$> [C.block| void * {
-    // Create a box
-    btVector3 s = btVector3( $( float sx ) , $( float sy ) , $( float sz ) );
-    btCollisionShape *collider = new btBoxShape( s );
+    btVector3 s = btVector3($(float sx), $(float sy), $(float sz));
+    btCollisionShape *collider = new btBoxShape(s);
     return collider;
     }|]
     where
         V3 sx sy sz = realToFrac <$> size * 0.5 -- bullet uses 1/2 extents
 
+createSphereShape :: (MonadIO m, Fractional a, Real a) => a -> m CollisionShape
+createSphereShape (realToFrac -> radius) = liftIO $ CollisionShape <$> [C.block| void * {
+    btCollisionShape *collider = new btSphereShape($(float radius));
+    return collider;
+    }|]
