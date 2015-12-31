@@ -35,7 +35,7 @@ addGhostObject (DynamicsWorld dynamicsWorld) (fromIntegral -> collisionObjectID)
         btDiscreteDynamicsWorld *dynamicsWorld = (btDiscreteDynamicsWorld *) $(void *dynamicsWorld);
         btCollisionShape        *collider      = (btCollisionShape *) $(void *collisionShape);
         
-        btCollisionObject *collisionObject = new btGhostObject();
+        btCollisionObject *collisionObject = new btPairCachingGhostObject();
 
         btQuaternion q = btQuaternion($(float qx), $(float qy), $(float qz), $(float qw));
         btVector3    p = btVector3($(float x), $(float y), $(float z));
@@ -48,7 +48,7 @@ addGhostObject (DynamicsWorld dynamicsWorld) (fromIntegral -> collisionObjectID)
         collisionObject->setCollisionShape(collider);
 
         collisionObject->setCollisionFlags(collisionObject->getCollisionFlags() |
-            btGhostObject::CF_NO_CONTACT_RESPONSE);
+            btPairCachingGhostObject::CF_NO_CONTACT_RESPONSE);
       
         dynamicsWorld->addCollisionObject(
             collisionObject, 
@@ -67,7 +67,7 @@ addGhostObject (DynamicsWorld dynamicsWorld) (fromIntegral -> collisionObjectID)
 getGhostObjectNumOverlapping :: (Num a, MonadIO m) => GhostObject -> m a
 getGhostObjectNumOverlapping (toCollisionObjectPointer -> ghostObject) = liftIO $ 
     fromIntegral <$> [C.block| int {
-        btGhostObject *ghostObject = (btGhostObject *)$(void *ghostObject);
+        btPairCachingGhostObject *ghostObject = (btPairCachingGhostObject *)$(void *ghostObject);
         return ghostObject->getNumOverlappingObjects();
     }|]
 
@@ -77,7 +77,7 @@ getGhostObjectOverlapping ghost@(toCollisionObjectPointer -> ghostObject) = lift
     
     results <- withArray_ (fromIntegral count) $ \ptr -> do
         [C.block| void {
-            btGhostObject *ghostObject = (btGhostObject *)$(void *ghostObject);
+            btPairCachingGhostObject *ghostObject = (btPairCachingGhostObject *)$(void *ghostObject);
             btCollisionObject **out = (btCollisionObject **)$(void **ptr);
             for (int i = 0; i < $(int count); i++) {
                 out[i] = ghostObject->getOverlappingObject(i);

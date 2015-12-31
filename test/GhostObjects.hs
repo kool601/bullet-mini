@@ -38,7 +38,7 @@ main = do
     
     let fov = 45
         ghostShapeSize = 10 :: V3 GLfloat
-        ghostShapePos = V3 0 5 0
+        ghostShapePose = newPose & posPosition .~ V3 0 5 0
     
     VRPal{..} <- initVRPal "Bullet" []
     
@@ -57,7 +57,8 @@ main = do
     _             <- addGroundPlane dynamicsWorld (CollisionObjectID 0) 0
 
     ghostBox    <- createBoxShape ghostShapeSize
-    ghostObject <- addGhostObject dynamicsWorld (CollisionObjectID 1) ghostBox mempty { rbPosition = ghostShapePos }
+    ghostObject <- addGhostObject dynamicsWorld (CollisionObjectID 1) ghostBox 
+        mempty { rbPosition = ghostShapePose ^. posPosition, rbRotation = ghostShapePose ^. posOrientation }
     
   
     glEnable GL_DEPTH_TEST
@@ -83,9 +84,14 @@ main = do
             (x,y,w,h) <- getWindowViewport gpWindow
             glViewport x y w h
             
-            x <- (\x->x::Float) . (* 5) . sin <$> getNow
-            let ghostShapePosMoving = ghostShapePos & _x .~ x
-            setCollisionObjectWorldTransform ghostObject ghostShapePosMoving (axisAngle (V3 1 1 0) 0)
+            ghostX <- (* 5) . sin <$> getNow
+            let ghostShapePoseMoving = ghostShapePose 
+                                        & posPosition . _x .~ ghostX
+                                        & posOrientation .~ axisAngle (V3 1 1 0) ghostX
+            setCollisionObjectWorldTransform ghostObject 
+                (ghostShapePoseMoving ^. posPosition)
+                (ghostShapePoseMoving ^. posOrientation)
+                
 
             processEvents gpEvents $ \e -> do
                 closeOnEscape gpWindow e
@@ -150,7 +156,7 @@ main = do
             withShape ghostShape $ do
                 Uniforms{..} <- asks sUniforms
                 uniformV3 uCamera =<< use (wldPlayer . posPosition)
-                let model = transformationFromPose (newPose & posPosition .~ ghostShapePosMoving)
+                let model = transformationFromPose ghostShapePoseMoving
                 uniformM44 uModelViewProjection (viewProj !*! model)
                 uniformM44 uInverseModel        (inv44 model)
                 uniformM44 uModel               model
