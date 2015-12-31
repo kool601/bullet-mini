@@ -32,7 +32,7 @@ getCollisionObjectID (toCollisionObjectPointer -> collisionObject) = liftIO $
     }|]
 
 -- | Don't use this for rigid bodies! Use setRigidBodyWorldTransform instead, as that updates the MotionState
-setCollisionObjectWorldTransform :: (Real a, MonadIO m) => RigidBody -> V3 a -> Quaternion a -> m ()
+setCollisionObjectWorldTransform :: (ToCollisionObjectPointer a, Real b, MonadIO m) => a -> V3 b -> Quaternion b -> m ()
 setCollisionObjectWorldTransform (toCollisionObjectPointer -> collisionObject) position rotation = liftIO [C.block| void {
   btCollisionObject *collisionObject     = (btCollisionObject *) $(void *collisionObject);
 

@@ -83,6 +83,10 @@ main = do
             (x,y,w,h) <- getWindowViewport gpWindow
             glViewport x y w h
             
+            x <- (\x->x::Float) . (* 5) . sin <$> getNow
+            let ghostShapePosMoving = ghostShapePos & _x .~ x
+            setCollisionObjectWorldTransform ghostObject ghostShapePosMoving (axisAngle (V3 1 1 0) 0)
+
             processEvents gpEvents $ \e -> do
                 closeOnEscape gpWindow e
                 onMouseDown e $ \_ -> do
@@ -146,7 +150,7 @@ main = do
             withShape ghostShape $ do
                 Uniforms{..} <- asks sUniforms
                 uniformV3 uCamera =<< use (wldPlayer . posPosition)
-                let model = transformationFromPose (newPose & posPosition .~ ghostShapePos)
+                let model = transformationFromPose (newPose & posPosition .~ ghostShapePosMoving)
                 uniformM44 uModelViewProjection (viewProj !*! model)
                 uniformM44 uInverseModel        (inv44 model)
                 uniformM44 uModel               model
