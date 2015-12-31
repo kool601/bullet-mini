@@ -63,6 +63,7 @@ main = do
     void . flip runStateT newWorld $ do 
         boxShape <- createBoxShape (1 :: V3 GLfloat)
 
+        -- Add a box anchored to the world
         let startY = 20
             startID = 1
         firstCube <- addRigidBody dynamicsWorld (CollisionObjectID 1) boxShape mempty 
@@ -75,6 +76,7 @@ main = do
             }
         _ <- addWorldPointToPointConstraint dynamicsWorld firstCube (V3 0 0 0)
         
+        -- Add a chain of boxes below it
         foldM_  (\(i, lastCube) _ -> do
             newCube <- addRigidBody dynamicsWorld (CollisionObjectID i) boxShape mempty 
                 { rbPosition = V3 0 (startY - fromIntegral i*2) 0
