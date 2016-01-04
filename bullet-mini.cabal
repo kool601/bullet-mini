@@ -32,8 +32,6 @@ test-suite cubes
   type:                exitcode-stdio-1.0
   main-is:             Cubes.hs
   hs-source-dirs:      test, test/shared
-  if os(windows)
-    buildable: False
   default-language:    Haskell2010
   other-modules:       Types
                        CubeUniforms
@@ -54,8 +52,6 @@ test-suite ghostobjects
   type:                exitcode-stdio-1.0
   main-is:             GhostObjects.hs
   hs-source-dirs:      test, test/shared
-  -- if os(windows)
-  --   buildable: False
   default-language:    Haskell2010
   other-modules:       Types
                        CubeUniforms
@@ -76,8 +72,6 @@ test-suite pointtopoint
   type:                exitcode-stdio-1.0
   main-is:             PointToPoint.hs
   hs-source-dirs:      test, test/shared
-  if os(windows)
-    buildable: False
   default-language:    Haskell2010
   other-modules:       Types
                        CubeUniforms
@@ -94,12 +88,10 @@ test-suite pointtopoint
                       , mtl
                       , random
 
-test-suite plane
+test-suite planeray
   type:                exitcode-stdio-1.0
-  main-is:             Plane.hs
+  main-is:             PlaneRay.hs
   hs-source-dirs:      test, test/shared
-  if os(windows)
-    buildable: False
   default-language:    Haskell2010
   other-modules:       Types
                        CubeUniforms
@@ -116,108 +108,98 @@ test-suite plane
                       , mtl
                       , random
 
--- test-suite collisions
---   type:                exitcode-stdio-1.0
---   main-is:             Collisions.hs
---   hs-source-dirs:      test, test/shared
---   if os(windows)
---     buildable: False
---   default-language:    Haskell2010
---   other-modules:       Types
---                        CubeUniforms
---   ghc-options:         -Wall -O2
---   build-depends:       base
---                      , bullet-mini
---                      , containers
---                      , gl
---                      , gl-pal
---                      , vr-pal
---                      , glfw-pal
---                      , lens-extra
---                      , linear-extra
---                      , mtl
--- 
--- test-suite springs
---   if os(windows)
---     buildable: False
---   type:                exitcode-stdio-1.0
---   main-is:             Springs.hs
---   hs-source-dirs:      test, test/shared
---   default-language:    Haskell2010
---   other-modules:       Types
---                        CubeUniforms
---   ghc-options:         -Wall -O2
---   build-depends:       base
---                      , bullet-mini
---                      , time
---                      , gl
---                      , gl-pal
---                      , vr-pal
---                      , glfw-pal
---                      , linear-extra
---                      , lens-extra
---                      , mtl
---                      , containers
---                      , halive
--- 
--- test-suite lasso
---   if os(windows)
---     buildable: False
---   type:                exitcode-stdio-1.0
---   main-is:             Lasso.hs
---   hs-source-dirs:      test, test/shared
---   default-language:    Haskell2010
---   other-modules:       Types
---                        CubeUniforms
---   ghc-options:         -Wall -O2
---   build-depends:       base
---                      , bullet-mini
---                      , time
---                      , gl
---                      , gl-pal
---                      , vr-pal
---                      , glfw-pal
---                      , linear-extra
---                      , lens-extra
---                      , mtl
---                      , containers
---                      , halive
--- 
--- test-suite vacuum
---   if os(windows)
---     buildable: False
---   type:                exitcode-stdio-1.0
---   main-is:             Vacuum.hs
---   hs-source-dirs:      test, test/shared
---   default-language:    Haskell2010
---   other-modules:       Types
---                        CubeUniforms
---   ghc-options:         -Wall -O2
---   build-depends:       base
---                      , bullet-mini
---                      , time
---                      , gl
---                      , gl-pal
---                      , vr-pal
---                      , glfw-pal
---                      , linear-extra
---                      , lens-extra
---                      , mtl
---                      , containers
---                      , halive
--- 
--- test-suite memory
---   type:                exitcode-stdio-1.0
---   if os(windows)
---     buildable: False
---   build-depends:       base
---                      , bullet-mini
---                      , linear-extra
---   main-is:             Memory.hs
---   default-language:    Haskell2010
---   hs-source-dirs:      test
---   ghc-options:         -Wall -O2
---   ghc-prof-options:    -Wall -O2 -fprof-auto -prof -threaded "-with-rtsopts=-N -T -p -s"
+test-suite collisions
+  type:                exitcode-stdio-1.0
+  main-is:             Collisions.hs
+  hs-source-dirs:      test, test/shared
+  default-language:    Haskell2010
+  other-modules:       Types
+                       CubeUniforms
+  ghc-options:         -Wall -O2
+  build-depends:       base
+                     , bullet-mini
+                     , containers
+                     , gl
+                     , gl-pal
+                     , vr-pal
+                     , glfw-pal
+                     , lens-extra
+                     , linear-extra
+                     , mtl
+
+test-suite springs
+  type:                exitcode-stdio-1.0
+  main-is:             Springs.hs
+  hs-source-dirs:      test, test/shared
+  default-language:    Haskell2010
+  other-modules:       Types
+                       CubeUniforms
+  ghc-options:         -Wall -O2
+  build-depends:       base
+                     , bullet-mini
+                     , time
+                     , gl
+                     , gl-pal
+                     , vr-pal
+                     , glfw-pal
+                     , linear-extra
+                     , lens-extra
+                     , mtl
+                     , containers
+                     , halive
+
+test-suite lasso
+  type:                exitcode-stdio-1.0
+  main-is:             Lasso.hs
+  hs-source-dirs:      test, test/shared
+  default-language:    Haskell2010
+  other-modules:       Types
+                       CubeUniforms
+  ghc-options:         -Wall -O2
+  build-depends:       base
+                     , bullet-mini
+                     , time
+                     , gl
+                     , gl-pal
+                     , vr-pal
+                     , glfw-pal
+                     , linear-extra
+                     , lens-extra
+                     , mtl
+                     , containers
+                     , halive
+
+test-suite vacuum
+  type:                exitcode-stdio-1.0
+  main-is:             Vacuum.hs
+  hs-source-dirs:      test, test/shared
+  default-language:    Haskell2010
+  other-modules:       Types
+                       CubeUniforms
+  ghc-options:         -Wall -O2
+  build-depends:       base
+                     , bullet-mini
+                     , time
+                     , gl
+                     , gl-pal
+                     , vr-pal
+                     , glfw-pal
+                     , linear-extra
+                     , lens-extra
+                     , mtl
+                     , containers
+                     , halive
+
+test-suite memory
+  type:                exitcode-stdio-1.0
+  build-depends:       base
+                     , bullet-mini
+                     , linear-extra
+  main-is:             Memory.hs
+  default-language:    Haskell2010
+  hs-source-dirs:      test
+  ghc-options:         -Wall -O2
+  ghc-prof-options:    -Wall -O2 -fprof-auto -prof -threaded "-with-rtsopts=-N -T -p -s"
 
 library
   exposed-modules:     Physics.Bullet

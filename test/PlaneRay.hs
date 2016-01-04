@@ -8,7 +8,6 @@ import Graphics.VR.Pal
 import Control.Monad
 import Control.Monad.State
 import Control.Lens.Extra
-import Data.Maybe
 import Data.Map (Map)
 import qualified Data.Map as Map
 import System.Random
@@ -54,7 +53,8 @@ main = do
     useProgram (sProgram cubeShape)
 
     dynamicsWorld  <- createDynamicsWorld mempty
-    _              <- addGroundPlane dynamicsWorld (RigidBodyID 0) 0
+    _              <- addGroundPlane dynamicsWorld (CollisionObjectID 0) 0
+    planeShape       <- createBoxShape (V3 1 1 0.1 :: V3 GLfloat)
 
     glEnable GL_DEPTH_TEST
 
@@ -63,10 +63,9 @@ main = do
 
     void . flip runStateT newWorld $ do 
         forM_ [1..100] $ \i -> do
-            rigidBody <- addCube dynamicsWorld (RigidBodyID i) mempty 
-                { pcPosition = V3 0 20 0
-                , pcRotation = Quaternion 0.5 (V3 0 1 1)
-                , pcScale = V3 1 1 0.1
+            rigidBody <- addRigidBody dynamicsWorld (CollisionObjectID i) planeShape mempty 
+                { rbPosition = V3 0 20 0
+                , rbRotation = Quaternion 0.5 (V3 0 1 1)
                 }
             wldCubes . at (fromIntegral i) ?= Cube
                 { _cubBody = rigidBody
@@ -86,11 +85,11 @@ main = do
       
                     mRayResult <- rayTestClosest dynamicsWorld cursorRay
                     forM_ mRayResult $ \rayResult -> do
-                        bodyID <- getRigidBodyID (rrRigidBody rayResult)
-                        mCube <- use (wldCubes . at (fromIntegral (unRigidBodyID bodyID)))
+                        bodyID <- getCollisionObjectID (rrCollisionObject rayResult)
+                        mCube <- use (wldCubes . at (fromIntegral (unCollisionObjectID bodyID)))
                         forM_ mCube $ \cube -> do
 
-                            putStrLnIO $ "Clicked Cube " ++ (show (unRigidBodyID bodyID))
+                            putStrLnIO $ "Clicked Cube " ++ (show (unCollisionObjectID bodyID))
           
           
                             (position, orientation) <- getBodyState (cube ^. cubBody)
@@ -100,7 +99,7 @@ main = do
                                 worldHit = rrLocation rayResult
                             -- printIO pointOnModel
           
-                            let cubeID = fromIntegral (unRigidBodyID bodyID)
+                            let cubeID = fromIntegral (unCollisionObjectID bodyID)
                             [r,g,b] <- liftIO (replicateM 3 randomIO)
                             wldCubes . at cubeID . traverse . cubColor .= V4 r g b 1
 
@@ -128,7 +127,7 @@ main = do
 
                     let model = mkTransformation orientation position
                     uniformM44 uModelViewProjection (viewProj !*! model)
-                    uniformM44 uInverseModel        (safeInv44 model)
+                    uniformM44 uInverseModel        (inv44 model)
                     uniformM44 uModel               model
                     uniformV4  uDiffuse             (cube ^. cubColor)
 

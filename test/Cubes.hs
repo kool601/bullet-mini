@@ -49,7 +49,7 @@ main = do
 
   dynamicsWorld  <- createDynamicsWorld mempty
   _              <- addGroundPlane dynamicsWorld (CollisionObjectID 0) 0
-  
+  boxShape       <- createBoxShape (1 :: V3 GLfloat)
 
   glEnable GL_DEPTH_TEST
 
@@ -57,7 +57,7 @@ main = do
 
 
   void . flip runStateT newWorld $ do 
-    boxShape <- createBoxShape (1 :: V3 GLfloat)
+    
     forM_ [1..1000] $ \i -> do
       rigidBody <- addRigidBody dynamicsWorld (CollisionObjectID i) boxShape mempty 
         { rbPosition = V3 0 20 0

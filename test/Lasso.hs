@@ -54,9 +54,13 @@ tuneSpring spring = do
 
 main :: IO ()
 main = do
-  VRPal{..}    <- reacquire 0 $ initVRPal "Bullet" NoGCPerFrame []
+  VRPal{..}    <- reacquire 0 $ initVRPal "Bullet" []
 
   dynamicsWorld  <- createDynamicsWorld mempty
+
+  boxShape <- createBoxShape (1 :: V3 GLfloat)
+  boxShape2 <- createBoxShape (2 :: V3 GLfloat)
+  _ <- addGroundPlane dynamicsWorld (CollisionObjectID 0) 0
 
   cubeProg       <- createShaderProgram "test/shared/cube.vert" "test/shared/cube.frag"
   cubeGeo        <- cubeGeometry (1 :: V3 GLfloat) (V3 1 1 1)
@@ -74,15 +78,15 @@ main = do
         }
   void . flip runStateT initialWorld $ do
 
-    _ <- addGroundPlane dynamicsWorld (RigidBodyID 0) 0
+    
 
     -- Add a moving cube
     let movingID = 2
-    movingRigidBody <- addCube dynamicsWorld (RigidBodyID movingID) mempty 
-        { pcPosition = V3 0 20 5
-        , pcRotation = Quaternion 0 (V3 0 1 0)
-        , pcCollisionGroup = 0
-        , pcCollisionMask = 0
+    movingRigidBody <- addRigidBody dynamicsWorld (CollisionObjectID movingID) boxShape mempty 
+        { rbPosition = V3 0 20 5
+        , rbRotation = Quaternion 0 (V3 0 1 0)
+        , rbCollisionGroup = 0
+        , rbCollisionMask = 0
         }
     wldCubes . at (fromIntegral movingID) ?= Cube
         { _cubBody = movingRigidBody
@@ -92,12 +96,11 @@ main = do
     setRigidBodyKinematic movingRigidBody
 
     let springID = 1
-    springRigidBody <- addCube dynamicsWorld (RigidBodyID springID) mempty 
-      { pcPosition = V3 0 20 0
-      , pcRotation = Quaternion 0 (V3 0 1 0)
-      , pcScale = V3 2 2 2
-      , pcCollisionGroup = 1
-      , pcCollisionMask = 1
+    springRigidBody <- addRigidBody dynamicsWorld (CollisionObjectID springID) boxShape2 mempty 
+      { rbPosition = V3 0 20 0
+      , rbRotation = Quaternion 0 (V3 0 1 0)
+      , rbCollisionGroup = 1
+      , rbCollisionMask = 1
       }
     wldCubes . at (fromIntegral springID) ?= Cube
       { _cubBody = springRigidBody
@@ -142,7 +145,7 @@ main = do
 
           let model = mkTransformation orientation position !*! scaleMatrix (cube ^. cubScale)
           uniformM44 uModelViewProjection (viewProj !*! model)
-          uniformM44 uInverseModel        (fromMaybe model (inv44 model))
+          uniformM44 uInverseModel        (inv44 model)
           uniformM44 uModel               model
           uniformV4  uDiffuse             (cube ^. cubColor)
           glDrawElements GL_TRIANGLES (geoVertCount (sGeometry cubeShape)) GL_UNSIGNED_INT nullPtr

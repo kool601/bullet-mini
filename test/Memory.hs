@@ -12,12 +12,13 @@ main :: IO ()
 main = do
 
   dynamicsWorld  <- createDynamicsWorld mempty
-  _              <- addGroundPlane dynamicsWorld (RigidBodyID 0) 0
+  _              <- addGroundPlane dynamicsWorld (CollisionObjectID 0) 0
+  boxShape       <- createBoxShape (1 :: V3 GLfloat)
 
   cubeBodies     <- forM [1..1000] $ \i -> 
-    addCube dynamicsWorld (RigidBodyID i) mempty 
-      { pcPosition = V3 0 20 0
-      , pcRotation = Quaternion 0.5 (V3 0 1 1)
+    addRigidBody dynamicsWorld (CollisionObjectID i) boxShape mempty 
+      { rbPosition = V3 0 20 0
+      , rbRotation = Quaternion 0.5 (V3 0 1 1)
       }
 
   replicateM_ 600 $ do
@@ -27,12 +28,12 @@ main = do
       return (pos, orient)
     threadDelay (floor $ 1/60 * 1e6)
 
-  forM_ cubeBodies (removeCube dynamicsWorld)
+  forM_ cubeBodies (removeRigidBody dynamicsWorld)
 
   cubeBodies2     <- forM [1..1000] $ \i -> 
-    addCube dynamicsWorld (RigidBodyID i) mempty 
-      { pcPosition = V3 0 20 0
-      , pcRotation = Quaternion 0.5 (V3 0 1 1)
+    addRigidBody dynamicsWorld (CollisionObjectID i) boxShape mempty 
+      { rbPosition = V3 0 20 0
+      , rbRotation = Quaternion 0.5 (V3 0 1 1)
       }
 
   replicateM_ 600 $ do
@@ -42,6 +43,6 @@ main = do
       return (pos, orient)
     threadDelay (floor $ 1/60 * 1e6)
 
-  forM_ cubeBodies2 (removeCube dynamicsWorld)
+  forM_ cubeBodies2 (removeRigidBody dynamicsWorld)
 
   threadDelay 1000000

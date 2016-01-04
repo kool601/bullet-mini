@@ -3,10 +3,8 @@
 
 import Graphics.UI.GLFW.Pal
 import Graphics.GL.Pal
-import Graphics.GL
 import Graphics.VR.Pal
 import Physics.Bullet
-import Linear.Extra
 
 import Control.Monad
 import Control.Monad.State
@@ -14,8 +12,6 @@ import Control.Lens.Extra
 import qualified Data.Map as Map
 import Data.Map (Map)
 import Data.Maybe
-
-import Data.Time
 
 import CubeUniforms
 
@@ -38,9 +34,11 @@ makeLenses ''World
 
 main :: IO ()
 main = do
-  VRPal{..}    <- reacquire 0 $ initVRPal "Bullet" NoGCPerFrame []
+  VRPal{..}    <- reacquire 0 $ initVRPal "Bullet" []
 
-  dynamicsWorld  <- createDynamicsWorld mempty { gravity = 0 }
+  dynamicsWorld  <- createDynamicsWorld mempty { dwGravity = 0 }
+  boxShape       <- createBoxShape (1 :: V3 GLfloat)
+  _              <- addGroundPlane dynamicsWorld (CollisionObjectID 0) 0
 
   cubeProg       <- createShaderProgram "test/shared/cube.vert" "test/shared/cube.frag"
   cubeGeo        <- cubeGeometry (1 :: V3 GLfloat) (V3 1 1 1)
@@ -57,12 +55,11 @@ main = do
         }
   void . flip runStateT initialWorld $ do
 
-    _ <- addStaticPlane dynamicsWorld (RigidBodyID 0) mempty {pcYPos = 0}
 
     forM_ [1..1000] $ \i -> do
-      rigidBody <- addCube dynamicsWorld (RigidBodyID i) mempty 
-        { pcPosition = V3 0 20 0
-        , pcRotation = Quaternion 0.5 (V3 0 1 1)
+      rigidBody <- addRigidBody dynamicsWorld (CollisionObjectID i) boxShape mempty 
+        { rbPosition = V3 0 20 0
+        , rbRotation = Quaternion 0.5 (V3 0 1 1)
         }
       wldCubes . at (fromIntegral i) ?= Cube
         { _cubBody = rigidBody
@@ -111,7 +108,7 @@ main = do
 
           let model = mkTransformation orientation position !*! scaleMatrix (cube ^. cubScale)
           uniformM44 uModelViewProjection (viewProj !*! model)
-          uniformM44 uInverseModel        (fromMaybe model (inv44 model))
+          uniformM44 uInverseModel        (inv44 model)
           uniformM44 uModel               model
           uniformV4  uDiffuse             (cube ^. cubColor)
           glDrawElements GL_TRIANGLES (geoVertCount (sGeometry cubeShape)) GL_UNSIGNED_INT nullPtr

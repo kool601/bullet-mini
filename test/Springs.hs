@@ -31,10 +31,10 @@ makeLenses ''World
 
 main :: IO ()
 main = do
-  VRPal{..}    <- reacquire 0 $ initVRPal "Bullet" NoGCPerFrame []
+  VRPal{..}    <- reacquire 0 $ initVRPal "Bullet" []
 
   dynamicsWorld  <- createDynamicsWorld mempty
-  
+  boxShape       <- createBoxShape (1 :: V3 GLfloat)
 
   cubeProg       <- createShaderProgram "test/shared/cube.vert" "test/shared/cube.frag"
   cubeGeo        <- cubeGeometry (2 :: V3 GLfloat) (V3 1 1 1)
@@ -52,12 +52,12 @@ main = do
         }
   void . flip runStateT initialWorld $ do
 
-    _ <- addGroundPlane dynamicsWorld (RigidBodyID 0) 0
+    _ <- addGroundPlane dynamicsWorld (CollisionObjectID 0) 0
 
     -- Add a moving cube
-    movingRigidBody <- addCube dynamicsWorld (RigidBodyID 12) mempty 
-        { pcPosition = V3 0 20 5
-        , pcRotation = Quaternion 0 (V3 0 1 0)
+    movingRigidBody <- addCube dynamicsWorld (CollisionObjectID 12) boxShape mempty 
+        { rbPosition = V3 0 20 5
+        , rbRotation = Quaternion 0 (V3 0 1 0)
         }
     wldCubes . at 12 ?= Cube
         { _cubBody = movingRigidBody
@@ -66,9 +66,9 @@ main = do
     setRigidBodyKinematic movingRigidBody
 
     -- Add a falling cube
-    fallingRigidBody <- addCube dynamicsWorld (RigidBodyID 11) mempty 
-        { pcPosition = V3 0 50 0
-        , pcRotation = Quaternion 0 (V3 0 1 0)
+    fallingRigidBody <- addCube dynamicsWorld (CollisionObjectID 11) boxShape mempty 
+        { rbPosition = V3 0 50 0
+        , rbRotation = Quaternion 0 (V3 0 1 0)
         }
     wldCubes . at 11 ?= Cube
         { _cubBody = fallingRigidBody
@@ -77,9 +77,9 @@ main = do
 
     -- Add a row of cubes attached to worldspace spring constraints
     forM_ [1..10] $ \i -> do
-      springRigidBody <- addCube dynamicsWorld (RigidBodyID i) mempty 
-        { pcPosition = V3 (-fromIntegral i * 2.1 + 11) 20 0
-        , pcRotation = Quaternion 0 (V3 0 1 0)
+      springRigidBody <- addCube dynamicsWorld (CollisionObjectID i) boxShape mempty 
+        { rbPosition = V3 (-fromIntegral i * 2.1 + 11) 20 0
+        , rbRotation = Quaternion 0 (V3 0 1 0)
         }
       wldCubes . at (fromIntegral i) ?= Cube
         { _cubBody = springRigidBody
@@ -121,8 +121,8 @@ main = do
       -- Set all colliding cubes to green
       collisions <- getCollisions dynamicsWorld
       forM_ collisions $ \collision -> do
-        let bodyAID = (fromIntegral . unRigidBodyID . cbBodyAID) collision
-        let bodyBID = (fromIntegral . unRigidBodyID . cbBodyBID) collision
+        let bodyAID = (fromIntegral . unCollisionObjectID . cbBodyAID) collision
+        let bodyBID = (fromIntegral . unCollisionObjectID . cbBodyBID) collision
         when (bodyAID /= 0 && bodyBID /= 0) $ 
           liftIO . putStrLn $ "Cube " ++ show bodyAID ++ " hit Cube " ++ show bodyBID
         wldCubes . at bodyAID . traverse . cubColor .= V4 0 1 0 1
@@ -144,7 +144,7 @@ main = do
 
           let model = mkTransformation orientation position
           uniformM44 uModelViewProjection (viewProj !*! model)
-          uniformM44 uInverseModel        (fromMaybe model (inv44 model))
+          uniformM44 uInverseModel        (inv44 model)
           uniformM44 uModel               model
           uniformV4  uDiffuse             (cube ^. cubColor)
           glDrawElements GL_TRIANGLES (geoVertCount (sGeometry cubeShape)) GL_UNSIGNED_INT nullPtr
