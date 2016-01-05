@@ -144,7 +144,7 @@ data RayResult a = RayResult
   , rrNormal          :: V3 a
   }
 
-rayTestClosest :: (Fractional a, Real a, MonadIO m) => DynamicsWorld -> Ray a -> m (Maybe (RayResult a))
+rayTestClosest :: (RealFloat a, MonadIO m) => DynamicsWorld -> Ray a -> m (Maybe (RayResult a))
 rayTestClosest (DynamicsWorld dynamicsWorld) ray = liftIO $ do
     ref <- newIORef Nothing
     let captureRayResult bodyPtr locX locY locZ norX norY norZ = if bodyPtr == nullPtr
@@ -172,8 +172,8 @@ rayTestClosest (DynamicsWorld dynamicsWorld) ray = liftIO $ do
             );
     }|]
     readIORef ref
-    where (V3 fx fy fz) = realToFrac <$> rayFrom ray
-          (V3 tx ty tz) = realToFrac <$> rayTo ray
+    where (V3 fx fy fz) = realToFrac <$> rayOrigin ray
+          (V3 tx ty tz) = realToFrac <$> pointOnRay ray 1000
 
 -- I'm guessing I can get the solver/collisionConfig/dispatcher/broadphase from pointers in the dynamicsWorld
 destroyDynamicsWorld :: DynamicsWorld -> IO ()

@@ -192,12 +192,50 @@ setRigidBodyActive (toCollisionObjectPointer -> rigidBody)  = liftIO [C.block| v
   rigidBody->activate();
   }|]
 
-setRigidBodyKinematic :: MonadIO m => RigidBody -> m ()
-setRigidBodyKinematic (toCollisionObjectPointer -> rigidBody)  = liftIO [C.block| void {
+setRigidBodyKinematic :: MonadIO m => RigidBody -> Bool -> m ()
+setRigidBodyKinematic (toCollisionObjectPointer -> rigidBody) (fromIntegral . fromEnum -> flag) = liftIO [C.block| void {
   btRigidBody *rigidBody     = (btRigidBody *) $(void *rigidBody);
-  rigidBody->setCollisionFlags(rigidBody->getCollisionFlags() | btCollisionObject::CF_KINEMATIC_OBJECT);
-  // Bullet docs recommend always disabling deactivation for kinematic objects
-  rigidBody->setActivationState(DISABLE_DEACTIVATION);
+  bool flag = (bool)$(int flag);
+
+  if (flag) {
+    rigidBody->setCollisionFlags(rigidBody->getCollisionFlags() |
+                                 btCollisionObject::CF_KINEMATIC_OBJECT);
+    // Bullet docs recommend always disabling deactivation for kinematic objects
+    rigidBody->setActivationState(DISABLE_DEACTIVATION);
+  } else {
+    rigidBody->setCollisionFlags(rigidBody->getCollisionFlags() &
+                                 ~btCollisionObject::CF_KINEMATIC_OBJECT);
+    // Restore the normal activation state (undoes DISABLE_DEACTIVATION)
+    rigidBody->activate(true);
+  }
+  
+  }|]
+
+setRigidBodyNoContactResponse :: MonadIO m => RigidBody -> Bool -> m ()
+setRigidBodyNoContactResponse (toCollisionObjectPointer -> rigidBody) (fromIntegral . fromEnum -> flag) = liftIO [C.block| void {
+  btRigidBody *rigidBody     = (btRigidBody *) $(void *rigidBody);
+  bool flag = (bool)$(int flag);
+
+  if (flag) {
+    rigidBody->setCollisionFlags(rigidBody->getCollisionFlags() |
+                                 btCollisionObject::CF_NO_CONTACT_RESPONSE);
+  } else {
+    rigidBody->setCollisionFlags(rigidBody->getCollisionFlags() &
+                                 ~btCollisionObject::CF_NO_CONTACT_RESPONSE);
+  }
+  
+  }|]
+
+setRigidBodyDisableDeactivation :: MonadIO m => RigidBody -> Bool -> m ()
+setRigidBodyDisableDeactivation (toCollisionObjectPointer -> rigidBody) (fromIntegral . fromEnum -> flag) = liftIO [C.block| void {
+  btRigidBody *rigidBody     = (btRigidBody *) $(void *rigidBody);
+  bool flag = (bool)$(int flag);
+
+  if (flag) {
+    rigidBody->setActivationState(DISABLE_DEACTIVATION);
+  } else {
+    rigidBody->activate(true);
+  }
   }|]
 
 -- -- | Allows disabling bullet's "sleep" feature (which is on by default)

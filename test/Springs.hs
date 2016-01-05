@@ -63,7 +63,7 @@ main = do
         { _cubBody = movingRigidBody
         , _cubColor = V4 0 1 1 1
         }
-    setRigidBodyKinematic movingRigidBody
+    setRigidBodyKinematic movingRigidBody True
 
     -- Add a falling cube
     fallingRigidBody <- addCube dynamicsWorld (CollisionObjectID 11) boxShape mempty 

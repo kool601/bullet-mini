@@ -42,13 +42,13 @@ addGhostObject (DynamicsWorld dynamicsWorld) (fromIntegral -> collisionObjectID)
 
         collisionObject->setWorldTransform(btTransform(q, p));
       
-        // Attach the given RigidBodyID
+        // Attach the given CollisionObjectID
         collisionObject->setUserIndex($(int collisionObjectID));
 
         collisionObject->setCollisionShape(collider);
 
         collisionObject->setCollisionFlags(collisionObject->getCollisionFlags() |
-            btPairCachingGhostObject::CF_NO_CONTACT_RESPONSE);
+                                           btCollisionObject::CF_NO_CONTACT_RESPONSE);
       
         dynamicsWorld->addCollisionObject(
             collisionObject, 
