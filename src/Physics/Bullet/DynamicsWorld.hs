@@ -67,6 +67,26 @@ stepSimulation (DynamicsWorld dynamicsWorld) (realToFrac -> frameRate) = liftIO 
   
     }|]
 
+-- | See computeOverlappingPairs. Adding these two so we can detect GhostObject intersections
+-- even when the simulation is paused.
+performDiscreteCollisionDetection :: MonadIO m => DynamicsWorld -> m ()
+performDiscreteCollisionDetection (DynamicsWorld dynamicsWorld) = liftIO [C.block| void {
+  
+    btDiscreteDynamicsWorld *dynamicsWorld = (btDiscreteDynamicsWorld *)$(void *dynamicsWorld);
+    dynamicsWorld->performDiscreteCollisionDetection();
+  
+    }|]
+
+-- | "the computeOverlappingPairs is usually already called by performDiscreteCollisionDetection 
+-- (or stepSimulation) it can be useful to use if you perform ray tests without collision detection/simulation"
+computeOverlappingPairs :: MonadIO m => DynamicsWorld -> m ()
+computeOverlappingPairs (DynamicsWorld dynamicsWorld) = liftIO [C.block| void {
+  
+    btDiscreteDynamicsWorld *dynamicsWorld = (btDiscreteDynamicsWorld *)$(void *dynamicsWorld);
+    dynamicsWorld->computeOverlappingPairs();
+  
+    }|]
+
 getCollisions :: MonadIO m => DynamicsWorld -> m [Collision]
 getCollisions (DynamicsWorld dynamicsWorld) = liftIO $ do
   

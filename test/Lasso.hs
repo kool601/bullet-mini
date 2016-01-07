@@ -54,7 +54,7 @@ main = do
 
   dynamicsWorld  <- createDynamicsWorld mempty
 
-  boxShape <- createBoxShape (1 :: V3 GLfloat)
+  boxShape  <- createBoxShape (1 :: V3 GLfloat)
   boxShape2 <- createBoxShape (2 :: V3 GLfloat)
   _ <- addGroundPlane dynamicsWorld (CollisionObjectID 0) 0
 
