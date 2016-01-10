@@ -123,7 +123,7 @@ main = do
         whenMouseDown gpWindow MouseButton'1 $ do
           playerPose <- use wldPlayer
           cursorRay  <- cursorPosToWorldRay gpWindow projMat playerPose
-          let newPosition = pointOnRay cursorRay 30
+          let newPosition = projectRay cursorRay 30
 
           setRigidBodyWorldTransform movingRigidBody newPosition (axisAngle (V3 0 1 0) 0)
 

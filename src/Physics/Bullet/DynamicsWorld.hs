@@ -193,7 +193,7 @@ rayTestClosest (DynamicsWorld dynamicsWorld) ray = liftIO $ do
     }|]
     readIORef ref
     where (V3 fx fy fz) = realToFrac <$> rayOrigin ray
-          (V3 tx ty tz) = realToFrac <$> pointOnRay ray 1000
+          (V3 tx ty tz) = realToFrac <$> projectRay ray 1000
 
 -- I'm guessing I can get the solver/collisionConfig/dispatcher/broadphase from pointers in the dynamicsWorld
 destroyDynamicsWorld :: DynamicsWorld -> IO ()

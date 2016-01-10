@@ -150,8 +150,10 @@ getBodyState (toCollisionObjectPointer -> rigidBody) = do
 
     btRigidBody* rigidBody = (btRigidBody *)$(void *rigidBody);
 
+    // btTransform trans = rigidBody->getWorldTransform();
     btTransform trans;
     rigidBody->getMotionState()->getWorldTransform(trans);
+    
 
     btScalar *transformPtr = (btScalar *)malloc(sizeof(btScalar) * 7);
 
@@ -255,6 +257,7 @@ setRigidBodyWorldTransform (toCollisionObjectPointer -> rigidBody) position rota
 
   btQuaternion q = btQuaternion($(float qx), $(float qy), $(float qz), $(float qw));
   btVector3    p = btVector3($(float x), $(float y), $(float z));
+  rigidBody->setWorldTransform(btTransform(q, p));
   rigidBody->getMotionState()->setWorldTransform(btTransform(q, p));
 
   }|]
