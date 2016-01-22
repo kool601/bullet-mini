@@ -18,6 +18,7 @@ import Control.Monad.Trans
 import Data.Monoid
 import Data.IORef
 import Physics.Bullet.Types
+import Text.RawString.QQ (r)
 
 {-
 See 
@@ -51,7 +52,7 @@ createDynamicsWorld DynamicsWorldConfig{..} = DynamicsWorld <$> liftIO [C.block|
 
   // This is required to use btGhostObjects
   dynamicsWorld->getPairCache()->setInternalGhostPairCallback(
-   new btGhostPairCallback());
+    new btGhostPairCallback());
 
   return dynamicsWorld;
 
@@ -87,6 +88,14 @@ computeOverlappingPairs (DynamicsWorld dynamicsWorld) = liftIO [C.block| void {
   
     }|]
 
+updateAABBs :: MonadIO m => DynamicsWorld -> m ()
+updateAABBs (DynamicsWorld dynamicsWorld) = liftIO [C.block| void {
+  
+    btDiscreteDynamicsWorld *dynamicsWorld = (btDiscreteDynamicsWorld *)$(void *dynamicsWorld);
+    dynamicsWorld->updateAabbs();
+  
+    }|]
+
 getCollisions :: MonadIO m => DynamicsWorld -> m [Collision]
 getCollisions (DynamicsWorld dynamicsWorld) = liftIO $ do
   
@@ -119,7 +128,6 @@ getCollisions (DynamicsWorld dynamicsWorld) = liftIO $ do
             // We only return one contact for now. I believe there are up to 4.
             if (numContacts > 0) {
                 btManifoldPoint& pt = contactManifold->getContactPoint(0);
-                
                 if (pt.getDistance()<0.f) {
           
                     const btCollisionObject* obA = contactManifold->getBody0();
@@ -128,8 +136,11 @@ getCollisions (DynamicsWorld dynamicsWorld) = liftIO $ do
                     const btVector3& ptA         = pt.getPositionWorldOnA();
                     const btVector3& ptB         = pt.getPositionWorldOnB();
                     const btVector3& nmB         = pt.m_normalWorldOnB;
-          
+                    
                     btScalar impulse = pt.getAppliedImpulse();
+
+                    //printf("Distance: %f Impulse: %f Normal: %f %f %f \n", pt.getDistance(), impulse, 
+                    //  nmB.getX(), nmB.getY(), nmB.getZ());
           
                     // fun:(void (*captureCollision)(void*, void*, 
                     //                               int, int, 
@@ -195,15 +206,101 @@ rayTestClosest (DynamicsWorld dynamicsWorld) ray = liftIO $ do
     where (V3 fx fy fz) = realToFrac <$> rayOrigin ray
           (V3 tx ty tz) = realToFrac <$> projectRay ray 1000
 
+
+
 -- I'm guessing I can get the solver/collisionConfig/dispatcher/broadphase from pointers in the dynamicsWorld
 destroyDynamicsWorld :: DynamicsWorld -> IO ()
 destroyDynamicsWorld (DynamicsWorld dynamicsWorld) = [C.block| void {
   btDiscreteDynamicsWorld* dynamicsWorld = (btDiscreteDynamicsWorld*)$(void *dynamicsWorld);
-  //delete dynamicsWorld;
+  
   //delete solver;
   //delete collisionConfiguration;
   //delete dispatcher;
   //delete broadphase;
+
+  delete dynamicsWorld;
 } |]
 
+C.verbatim [r|
 
+typedef void (*CaptureCollisionPtr)(int, int, 
+                                    float, float, float, 
+                                    float, float, float, 
+                                    float, float, float, 
+                                    float);
+
+struct GatherContactResultsCallback : public btCollisionWorld::ContactResultCallback {
+  
+    GatherContactResultsCallback(btCollisionObject* tgtBody , CaptureCollisionPtr context)
+        : btCollisionWorld::ContactResultCallback(), body(tgtBody), funPtr(context) { }
+
+    btCollisionObject* body; // The body the sensor is monitoring
+    CaptureCollisionPtr funPtr; // External information for contact processing
+
+    //virtual bool needsCollision(btBroadphaseProxy* proxy) const {
+    //}
+
+    virtual btScalar addSingleResult(btManifoldPoint& pt,
+        const btCollisionObjectWrapper* colObj0,int partId0,int index0,
+        const btCollisionObjectWrapper* colObj1,int partId1,int index1)
+    {
+        const btCollisionObject* obA = colObj0->m_collisionObject;
+        const btCollisionObject* obB = colObj1->m_collisionObject;
+        
+        const btVector3& ptA         = pt.getPositionWorldOnA();
+        const btVector3& ptB         = pt.getPositionWorldOnB();
+        const btVector3& nmB         = pt.m_normalWorldOnB;
+        
+        btScalar impulse = pt.getAppliedImpulse();
+
+        //printf("Distance: %f Impulse: %f Normal: %f %f %f \n", pt.getDistance(), impulse, 
+        //  nmB.getX(), nmB.getY(), nmB.getZ());
+
+        funPtr(
+            obA->getUserIndex(),
+            obB->getUserIndex(),
+            ptA.getX(), ptA.getY(), ptA.getZ(),
+            ptB.getX(), ptB.getY(), ptB.getZ(), 
+            nmB.getX(), nmB.getY(), nmB.getZ(),
+            impulse
+            );
+
+        // do stuff with the collision point
+
+
+        return 0; // There was a planned purpose for the return value of addSingleResult, but it is not used so you can ignore it.
+    }
+};
+
+|]
+
+contactTest :: (MonadIO m, ToCollisionObjectPointer a) => DynamicsWorld -> a -> m [Collision]
+contactTest (DynamicsWorld dynamicsWorld) (toCollisionObjectPointer -> collisionObject) = liftIO $ do
+  collisionsRef <- newIORef []
+  let captureCollision objAID objBID aX aY aZ bX bY bZ nX nY nZ impulse = do
+        let collision = Collision
+              -- { cbBodyA = RigidBody objA
+              -- , cbBodyB = RigidBody objB
+              { cbBodyAID = CollisionObjectID (fromIntegral objAID)
+              , cbBodyBID = CollisionObjectID (fromIntegral objBID)
+              , cbPositionOnA    = realToFrac <$> V3 aX aY aZ
+              , cbPositionOnB    = realToFrac <$> V3 bX bY bZ
+              , cbNormalOnB      = realToFrac <$> V3 nX nY nZ
+              , cbAppliedImpulse = realToFrac impulse
+              }
+        modifyIORef collisionsRef (collision:)
+
+  [C.block| void {
+    btDiscreteDynamicsWorld* dynamicsWorld = (btDiscreteDynamicsWorld*)$(void *dynamicsWorld);
+    btCollisionObject* collisionObject = (btCollisionObject *)$(void *collisionObject);
+
+    CaptureCollisionPtr captureCollisionPtr = $fun:(void (*captureCollision)(int, int, 
+                                       float, float, float, 
+                                       float, float, float, 
+                                       float, float, float, 
+                                       float));
+    GatherContactResultsCallback callback(collisionObject, captureCollisionPtr);
+    dynamicsWorld->contactTest(collisionObject, callback);
+
+  }|]
+  readIORef collisionsRef
