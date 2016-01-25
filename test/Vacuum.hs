@@ -108,7 +108,6 @@ main = do
 
           let model = mkTransformation orientation position !*! scaleMatrix (cube ^. cubScale)
           uniformM44 uModelViewProjection (viewProj !*! model)
-          uniformM44 uInverseModel        (inv44 model)
           uniformM44 uModel               model
           uniformV4  uDiffuse             (cube ^. cubColor)
           glDrawElements GL_TRIANGLES (geoVertCount (sGeometry cubeShape)) GL_UNSIGNED_INT nullPtr

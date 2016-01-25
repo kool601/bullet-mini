@@ -153,7 +153,6 @@ main = do
                 uniformV3 uCamera =<< use (wldPlayer . posPosition)
                 let model = planeM44
                 uniformM44 uModelViewProjection (viewProj !*! model)
-                uniformM44 uInverseModel        (inv44 model)
                 uniformM44 uModel               model
                 uniformV4  uDiffuse             (V4 0.1 0.0 0.5 1)
                 drawShape
@@ -164,7 +163,6 @@ main = do
                 uniformV3 uCamera =<< use (wldPlayer . posPosition)
                 let model = transformationFromPose ghostShapePoseMoving
                 uniformM44 uModelViewProjection (viewProj !*! model)
-                uniformM44 uInverseModel        (inv44 model)
                 uniformM44 uModel               model
                 uniformV4  uDiffuse             (V4 0.5 0.0 0.5 0.5)
                 drawShape
