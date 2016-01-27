@@ -55,7 +55,7 @@ addRigidBody (DynamicsWorld dynamicsWorld) (fromIntegral -> rigidBodyID) (Collis
     RigidBody . CollisionObject <$> [C.block| void * {
       
         btDiscreteDynamicsWorld *dynamicsWorld = (btDiscreteDynamicsWorld *) $(void *dynamicsWorld);
-        btCollisionShape        *collider      = (btCollisionShape *) $(void *collisionShape);
+        btCollisionShape        *shape         = (btCollisionShape *) $(void *collisionShape);
       
         // MotionStates are for communicating transforms between our engine and Bullet; 
         // we're not using them
@@ -69,10 +69,10 @@ addRigidBody (DynamicsWorld dynamicsWorld) (fromIntegral -> rigidBodyID) (Collis
         btScalar mass     = $(float m);
         btVector3 inertia = btVector3($(float ix), $(float iy), $(float iz));
       
-        collider->calculateLocalInertia(mass, inertia);
+        shape->calculateLocalInertia(mass, inertia);
       
         btRigidBody::btRigidBodyConstructionInfo rigidBodyCI( 
-            mass, motionState, collider, inertia);
+            mass, motionState, shape, inertia);
         btRigidBody* rigidBody = new btRigidBody(rigidBodyCI);
       
         rigidBody->setRestitution($(float r));
@@ -106,20 +106,29 @@ removeRigidBody (DynamicsWorld dynamicsWorld) (toCollisionObjectPointer -> rigid
   
   }|]
 
-
-setRigidBodyScale :: (MonadIO m, Real a) => DynamicsWorld -> RigidBody -> V3 a -> m ()
-setRigidBodyScale (DynamicsWorld dynamicsWorld) (toCollisionObjectPointer -> rigidBody) scale = liftIO [C.block| void {
-  btDiscreteDynamicsWorld* dynamicsWorld = (btDiscreteDynamicsWorld *) $( void *dynamicsWorld );
-  btRigidBody* rigidBody = (btRigidBody *) $(void *rigidBody);
-  btVector3 scale = btVector3( $(float x) , $(float y) , $(float z) );
-
-  btCollisionShape *shape = (btCollisionShape *)rigidBody->getCollisionShape();
-
-  shape->setLocalScaling(scale);
-  dynamicsWorld->updateSingleAabb(rigidBody);
+-- | This is the only reliable way I've found so far to change an object's shape.
+-- see: http://bulletphysics.org/Bullet/phpBB3/viewtopic.php?t=5194
+-- If we try setLocalScaling again, see if the calculateLocalInertia/setMassProps helps anything, as I didn't try that.
+setRigidBodyShape :: (MonadIO m, Real a) => DynamicsWorld -> RigidBody -> CollisionShape -> a -> m ()
+setRigidBodyShape (DynamicsWorld dynamicsWorld) (toCollisionObjectPointer -> rigidBody) (CollisionShape collisionShape) mass = liftIO [C.block| void {
+  btDiscreteDynamicsWorld *dynamicsWorld = (btDiscreteDynamicsWorld *) $(void *dynamicsWorld);
+  btRigidBody             *rigidBody     = (btRigidBody *) $(void *rigidBody);
+  btCollisionShape        *shape         = (btCollisionShape *) $(void *collisionShape);
+  
+  dynamicsWorld->removeRigidBody(rigidBody);
+  
+  delete rigidBody->getCollisionShape();
+    
+  btScalar mass = $(float mass');
+  btVector3 inertia = btVector3(0,0,0);
+  shape->calculateLocalInertia(mass, inertia);
+  rigidBody->setCollisionShape(shape);
+  rigidBody->setMassProps(mass, inertia);
+  
+  dynamicsWorld->addRigidBody(rigidBody);
   }|]
   where
-    (V3 x y z) = realToFrac <$> scale
+    mass' = realToFrac mass
 
 applyCentralImpulse :: (Functor m, MonadIO m, Real a) => RigidBody -> V3 a -> m ()
 applyCentralImpulse (toCollisionObjectPointer -> rigidBody) force = liftIO [C.block| void {
