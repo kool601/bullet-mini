@@ -133,10 +133,10 @@ setRigidBodyShape (DynamicsWorld dynamicsWorld) (toCollisionObjectPointer -> rig
 applyCentralImpulse :: (Functor m, MonadIO m, Real a) => RigidBody -> V3 a -> m ()
 applyCentralImpulse (toCollisionObjectPointer -> rigidBody) force = liftIO [C.block| void {
 
-  btRigidBody* rigidBody = (btRigidBody *) $(void *rigidBody);
+  btRigidBody *rigidBody = (btRigidBody *) $(void *rigidBody);
 
-  btVector3 force = btVector3( $(float x) , $(float y) , $(float z) );
-  rigidBody -> applyCentralImpulse( force );
+  btVector3 force = btVector3($(float x), $(float y), $(float z));
+  rigidBody->applyCentralImpulse(force);
 
   }|]
   where
@@ -144,8 +144,16 @@ applyCentralImpulse (toCollisionObjectPointer -> rigidBody) force = liftIO [C.bl
 
 
 
+setRigidBodyGravity :: (Functor m, MonadIO m, Real a) => RigidBody -> V3 a -> m ()
+setRigidBodyGravity (toCollisionObjectPointer -> rigidBody) gravity = liftIO [C.block| void {
+  btRigidBody *rigidBody = (btRigidBody *) $(void *rigidBody);
 
+  btVector3 gravity = btVector3($(float x), $(float y), $(float z));
+  rigidBody->setGravity(gravity);
 
+  }|]
+  where
+    (V3 x y z) = realToFrac <$> gravity
 
 getBodyState :: (Fractional a, MonadIO m) => RigidBody -> m (V3 a, Quaternion a)
 getBodyState (toCollisionObjectPointer -> rigidBody) = do
