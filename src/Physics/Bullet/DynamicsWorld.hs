@@ -17,6 +17,7 @@ import Linear.Extra
 import Control.Monad.Trans
 import Data.Monoid
 import Data.IORef
+import Data.Time
 import Physics.Bullet.Types
 import Text.RawString.QQ (r)
 
@@ -60,11 +61,18 @@ createDynamicsWorld DynamicsWorldConfig{..} = DynamicsWorld <$> liftIO [C.block|
   where
     g = realToFrac dwGravity
 
-stepSimulation :: MonadIO m => DynamicsWorld -> Float -> m ()
-stepSimulation (DynamicsWorld dynamicsWorld) (realToFrac -> frameRate) = liftIO [C.block| void {
+stepSimulationSimple :: MonadIO m => DynamicsWorld -> NominalDiffTime -> m ()
+stepSimulationSimple (DynamicsWorld dynamicsWorld) (realToFrac -> dt) = liftIO [C.block| void {
   
     btDiscreteDynamicsWorld *dynamicsWorld = (btDiscreteDynamicsWorld *)$(void *dynamicsWorld);
-    dynamicsWorld->stepSimulation(1 / $(float frameRate), 10);
+    dynamicsWorld->stepSimulation($(float dt));
+  
+    }|]
+stepSimulationWithTimestep :: MonadIO m => DynamicsWorld -> NominalDiffTime -> Int -> Float -> m ()
+stepSimulationWithTimestep (DynamicsWorld dynamicsWorld) (realToFrac -> dt) (fromIntegral -> maxSubsteps) (realToFrac -> fixedTimeStep) = liftIO [C.block| void {
+  
+    btDiscreteDynamicsWorld *dynamicsWorld = (btDiscreteDynamicsWorld *)$(void *dynamicsWorld);
+    dynamicsWorld->stepSimulation($(float dt), $(int maxSubsteps), $(float fixedTimeStep));
   
     }|]
 

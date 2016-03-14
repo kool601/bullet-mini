@@ -32,8 +32,9 @@ createStaticPlaneShape planeOffset = liftIO $ CollisionShape <$> [C.block| void 
 createBoxShape :: (MonadIO m, Fractional a, Real a) => V3 a -> m CollisionShape
 createBoxShape size = liftIO $ CollisionShape <$> [C.block| void * {
     btVector3 s = btVector3($(float sx), $(float sy), $(float sz));
-    btCollisionShape *shape = new btBoxShape(btVector3(1,1,1));
-    shape->setLocalScaling(s);
+    // btCollisionShape *shape = new btBoxShape(btVector3(1,1,1));
+    // shape->setLocalScaling(s);
+    btCollisionShape *shape = new btBoxShape(s);
     return shape;
     }|]
     where
