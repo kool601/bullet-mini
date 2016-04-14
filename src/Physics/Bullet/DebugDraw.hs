@@ -105,4 +105,7 @@ debugDrawDynamicsWorld (DynamicsWorld dynamicsWorld) drawFunction = liftIO $ do
         MiniDebugDraw *miniDebugDraw = new MiniDebugDraw(drawFunctionPtr);
         dynamicsWorld->setDebugDrawer(miniDebugDraw);
         dynamicsWorld->debugDrawWorld();
+        // Clear the temporary debug drawer, as the function pointer we create here will no longer be valid
+        // outside of this scope
+        dynamicsWorld->setDebugDrawer(0);
     }|]

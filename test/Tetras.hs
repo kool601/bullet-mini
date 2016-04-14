@@ -14,9 +14,8 @@ import System.Random
 
 import Types
 import CubeUniforms
-import Data.IORef
 import Physics.Bullet
-import Control.Concurrent
+
 import qualified Data.Vector.Storable as V
 
 data World = World
@@ -39,7 +38,7 @@ main = do
     vrPal@VRPal{..} <- initVRPal "Bullet" []
     
     shader    <- createShaderProgram "test/shared/cube.vert" "test/shared/cube.frag"
-    Uniforms{..} <- acquireUniforms shader
+    uniforms@Uniforms{..} <- acquireUniforms shader
 
 
     let tetraData = tetrahedronData 1
@@ -49,13 +48,11 @@ main = do
     cubeGeo   <- cubeGeometry (1 :: V3 GLfloat) (V3 1 1 1)
     cubeShape <- makeShape cubeGeo shader :: IO (Shape Uniforms)
 
-    (lineVAO, lineBuffer, lineVertCount) <- makeLine shader
+    (lineVAO, lineBuffer, _lineVertCount) <- makeLine shader
 
 
     dynamicsWorld  <- createDynamicsWorld mempty
-
-    --debugLinesRef <- addDebugDrawer dynamicsWorld
-    
+        
     --let invert = (rotate (axisAngle (V3 1 0 0) pi))
     tetraCollider    <- createConvexHullShape (V.fromList $ gdPositions tetraData)
     
@@ -75,7 +72,7 @@ main = do
   
     void . flip runStateT newWorld $ do 
         
-        forM_ [1..1000] $ \i -> do
+        forM_ [1..100] $ \i -> do
     
             rigidBody <- addRigidBody dynamicsWorld (CollisionObjectID i) tetraCollider mempty 
                 { rbPosition = V3 0 20 0
@@ -153,22 +150,32 @@ main = do
 
                 drawShape
 
+            -- Debug drawing
+            debugDrawPhysics shader uniforms cameraPos viewProj dynamicsWorld lineBuffer lineVAO            
 
-            --useProgram shader
-            --uniformV3  uCamera              cameraPos 
-            --uniformM44 uModelViewProjection viewProj
-            --uniformM44 uModel               identity
-            
-            --glDisable GL_DEPTH_TEST
-            --debugDrawDynamicsWorld dynamicsWorld $ \pt1 pt2 color -> do
-            --    uniformV4  uDiffuse             color
-            --    bufferSubData lineBuffer ([pt1, pt2] :: [V3 GLfloat])
-            --    withVAO lineVAO $ 
-            --        glDrawArrays GL_LINE_STRIP 0 2
-            --glEnable GL_DEPTH_TEST
             swapBuffers gpWindow
 
-
+debugDrawPhysics :: MonadIO m => Program
+                              -> Uniforms
+                              -> V3 GLfloat
+                              -> M44 GLfloat
+                              -> DynamicsWorld
+                              -> ArrayBuffer (V3 GLfloat)
+                              -> VertexArrayObject
+                              -> m ()
+debugDrawPhysics shader Uniforms{..} cameraPos viewProj dynamicsWorld lineBuffer lineVAO = do
+    useProgram shader
+    uniformV3  uCamera              cameraPos 
+    uniformM44 uModelViewProjection viewProj
+    uniformM44 uModel               identity
+    
+    glDisable GL_DEPTH_TEST
+    debugDrawDynamicsWorld dynamicsWorld $ \pt1 pt2 color -> do
+        uniformV4  uDiffuse             color
+        bufferSubData lineBuffer ([pt1, pt2] :: [V3 GLfloat])
+        withVAO lineVAO $ 
+            glDrawArrays GL_LINE_STRIP 0 2
+    glEnable GL_DEPTH_TEST
 
 makeLine :: Program -> IO (VertexArrayObject, ArrayBuffer (V3 GLfloat), GLsizei)
 makeLine shader = do
