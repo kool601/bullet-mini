@@ -52,8 +52,11 @@ createConvexHullShape points = liftIO $ do
     CollisionShape <$> [C.block| void * {
 
         float* points = $vec-ptr:(float *pointsFlat);
-        int numPoints = $vec-len:pointsFlat / 3;
+        int numPoints = $vec-len:pointsFlat;
 
-        btCollisionShape *shape = new btConvexHullShape(points, numPoints);
+        btConvexHullShape *shape = new btConvexHullShape();
+        for (int i = 0; i < numPoints; i+=3) {
+            shape->addPoint(btVector3(points[i], points[i+1], points[i+2]));
+        }
         return shape;
         }|]

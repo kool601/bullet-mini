@@ -60,7 +60,7 @@ main = do
     tetraCollider    <- createConvexHullShape (V.fromList $ gdPositions tetraData)
     
     let floorDims = V3 100 1 100 :: V3 GLfloat
-        floorPos = V3 0 2 0
+        floorPos  = V3 0 2 0
     floorCollider <- createBoxShape floorDims
     floorBody <- addRigidBody dynamicsWorld (CollisionObjectID 0) floorCollider mempty 
         { rbPosition = floorPos
@@ -75,16 +75,19 @@ main = do
   
     void . flip runStateT newWorld $ do 
         
-        forM_ [1..10] $ \i -> do
+        forM_ [1..1000] $ \i -> do
     
             rigidBody <- addRigidBody dynamicsWorld (CollisionObjectID i) tetraCollider mempty 
                 { rbPosition = V3 0 20 0
                 , rbMass = 10
                 , rbRestitution = 0.1
                 }
+            [r,g,b] <- liftIO (replicateM 3 randomIO)
+            
             wldCubes . at (fromIntegral i) ?= Cube
                 { _cubBody = rigidBody
-                , _cubColor = V4 1 0 1 1
+                --, _cubColor = V4 1 0 1 1
+                , _cubColor = V4 r g b 1
                 }
         whileWindow gpWindow $ do
             playerPose <- use wldPlayer
@@ -151,18 +154,18 @@ main = do
                 drawShape
 
 
-            useProgram shader
-            uniformV3  uCamera              cameraPos 
-            uniformM44 uModelViewProjection viewProj
-            uniformM44 uModel               identity
+            --useProgram shader
+            --uniformV3  uCamera              cameraPos 
+            --uniformM44 uModelViewProjection viewProj
+            --uniformM44 uModel               identity
             
-            glDisable GL_DEPTH_TEST
-            debugDrawDynamicsWorld dynamicsWorld $ \pt1 pt2 color -> do
-                uniformV4  uDiffuse             color
-                bufferSubData lineBuffer ([pt1, pt2] :: [V3 GLfloat])
-                withVAO lineVAO $ 
-                    glDrawArrays GL_LINE_STRIP 0 2
-            glEnable GL_DEPTH_TEST
+            --glDisable GL_DEPTH_TEST
+            --debugDrawDynamicsWorld dynamicsWorld $ \pt1 pt2 color -> do
+            --    uniformV4  uDiffuse             color
+            --    bufferSubData lineBuffer ([pt1, pt2] :: [V3 GLfloat])
+            --    withVAO lineVAO $ 
+            --        glDrawArrays GL_LINE_STRIP 0 2
+            --glEnable GL_DEPTH_TEST
             swapBuffers gpWindow
 
 
@@ -170,7 +173,7 @@ main = do
 makeLine :: Program -> IO (VertexArrayObject, ArrayBuffer (V3 GLfloat), GLsizei)
 makeLine shader = do
 
-    let verts = map (\x -> V3 x 0 0) [-1,-0.95..1]
+    let verts = map (\x -> V3 x 0 0) [0..1]
         vertCount = length verts
         normals = replicate vertCount (V3 0 0 1)
     
