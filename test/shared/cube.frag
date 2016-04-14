@@ -34,5 +34,5 @@ void main() {
 
     fragColor = vec4(diffuseLit, uDiffuse.a);
 
-    fragColor = vec4(1,1,1,1);
+    // fragColor = vec4(1,1,1,1);
 }

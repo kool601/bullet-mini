@@ -17,8 +17,6 @@ import Data.Monoid
 import Physics.Bullet.Types
 import Text.RawString.QQ (r)
 import Linear.Extra
-import Data.IORef
-
 C.context (C.cppCtx <> C.funCtx)
 
 C.include "<btBulletDynamicsCommon.h>"
@@ -61,7 +59,6 @@ MiniDebugDraw::MiniDebugDraw(DrawFunctionPtr drawPtr) {
 void MiniDebugDraw::drawLine(const btVector3& from
                             ,const btVector3& to
                             ,const btVector3& color){
-    printf("About to call drawfunk\n");
     m_drawFunction(from.getX(),  from.getY(),  from.getZ(), 
                  to.getX(),    to.getY(),    to.getZ(),
                  color.getX(), color.getY(), color.getZ());
@@ -88,14 +85,16 @@ void    MiniDebugDraw::drawContactPoint(const btVector3& pointOnB,const btVector
 }
 |]
 
-addDebugDrawer (DynamicsWorld dynamicsWorld) = do
-    debugLinesRef <- newIORef []
-    let drawFunctionFlat x1 y1 z1 x2 y2 z2 r g b = do
-            print (x1,y1,z1,x2,y2,z2,r,g,b)
-            modifyIORef' debugLinesRef 
-                (( realToFrac <$> V3 x1 y1 z1
-                 , realToFrac <$> V3 x2 y2 z2
-                 , realToFrac <$> V4 r g b 1) :)
+type DrawFunction a = V3 a -> V3 a -> V4 a -> IO ()
+
+debugDrawDynamicsWorld :: (RealFrac a, MonadIO m) => DynamicsWorld
+                                                  -> DrawFunction a
+                                                  -> m ()
+debugDrawDynamicsWorld (DynamicsWorld dynamicsWorld) drawFunction = liftIO $ do
+    let drawFunctionFlat x1 y1 z1 x2 y2 z2 r g b = 
+            drawFunction (realToFrac <$> V3 x1 y1 z1)
+                         (realToFrac <$> V3 x2 y2 z2)
+                         (realToFrac <$> V4 r g b 1)
     [C.block| void {
         btDiscreteDynamicsWorld *dynamicsWorld = (btDiscreteDynamicsWorld *)$(void *dynamicsWorld);
 
@@ -105,19 +104,5 @@ addDebugDrawer (DynamicsWorld dynamicsWorld) = do
                                            float, float, float));
         MiniDebugDraw *miniDebugDraw = new MiniDebugDraw(drawFunctionPtr);
         dynamicsWorld->setDebugDrawer(miniDebugDraw);
-    }|]
-
-    return debugLinesRef
-
-
-debugDrawDynamicsWorld :: (RealFrac a, MonadIO m) => DynamicsWorld
-                                                  -> IORef ([(V3 a, V3 a, V4 a)]) 
-                                                  -> m [(V3 a, V3 a, V4 a)]
-debugDrawDynamicsWorld (DynamicsWorld dynamicsWorld) linesRef = liftIO $ do
-    [C.block| void {
-        btDiscreteDynamicsWorld *dynamicsWorld = (btDiscreteDynamicsWorld *)$(void *dynamicsWorld);
         dynamicsWorld->debugDrawWorld();
     }|]
-    lines <- readIORef linesRef
-    writeIORef linesRef []
-    return lines

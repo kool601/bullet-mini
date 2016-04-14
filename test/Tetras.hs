@@ -54,7 +54,7 @@ main = do
 
     dynamicsWorld  <- createDynamicsWorld mempty
 
-    debugLinesRef <- addDebugDrawer dynamicsWorld
+    --debugLinesRef <- addDebugDrawer dynamicsWorld
     
     --let invert = (rotate (axisAngle (V3 1 0 0) pi))
     tetraCollider    <- createConvexHullShape (V.fromList $ gdPositions tetraData)
@@ -127,28 +127,28 @@ main = do
             
             cameraPos <- use (wldPlayer . posPosition)
             ---- Begin cube batch
-            --withShape tetraShape $ do
-            --    uniformV3 uCamera cameraPos
-            --    cubes <- Map.elems <$> use wldCubes
+            withShape tetraShape $ do
+                uniformV3 uCamera cameraPos
+                cubes <- Map.elems <$> use wldCubes
         
-            --    forM_ cubes $ \cube -> do
-            --        (position, orientation) <- getBodyState (cube ^. cubBody)
+                forM_ cubes $ \cube -> do
+                    (position, orientation) <- getBodyState (cube ^. cubBody)
           
-            --        let model = mkTransformation orientation position
-            --        uniformM44 uModelViewProjection (viewProj !*! model)
-            --        uniformM44 uModel               model
-            --        uniformV4  uDiffuse             (cube ^. cubColor)
-            --        drawShape
+                    let model = mkTransformation orientation position
+                    uniformM44 uModelViewProjection (viewProj !*! model)
+                    uniformM44 uModel               model
+                    uniformV4  uDiffuse             (cube ^. cubColor)
+                    drawShape
 
-            ---- Draw floor
-            --withShape cubeShape $ do
-            --    uniformV3 uCamera cameraPos
-            --    let model = mkTransformation (axisAngle (V3 0 1 0) 0) floorPos !*! scaleMatrix floorDims
-            --    uniformM44 uModelViewProjection (viewProj !*! model)
-            --    uniformM44 uModel               model
-            --    uniformV4  uDiffuse             (V4 1 1 1 1)
+            -- Draw floor
+            withShape cubeShape $ do
+                uniformV3 uCamera cameraPos
+                let model = mkTransformation (axisAngle (V3 0 1 0) 0) floorPos !*! scaleMatrix floorDims
+                uniformM44 uModelViewProjection (viewProj !*! model)
+                uniformM44 uModel               model
+                uniformV4  uDiffuse             (V4 1 1 1 1)
 
-            --    drawShape
+                drawShape
 
 
             useProgram shader
@@ -156,24 +156,13 @@ main = do
             uniformM44 uModelViewProjection viewProj
             uniformM44 uModel               identity
             
-            --glDisable GL_DEPTH_TEST
-            --printIO =<< liftIO myThreadId
-
-            lines <- debugDrawDynamicsWorld dynamicsWorld debugLinesRef
-            printIO lines
-            forM_ lines $ \(pt1, pt2, color) -> do
-                --newVerts <- randomVerts lineVertCount
-                --bufferSubData lineBuffer (take 2 $ newVerts :: [V3 GLfloat])
-                --uniformV4  uDiffuse             (V4 1 1 1 1)
-                --withVAO lineVAO $ 
-                --    --glDrawArrays GL_LINE_STRIP 0 lineVertCount
-                --    glDrawArrays GL_LINE_STRIP 0 2
-
+            glDisable GL_DEPTH_TEST
+            debugDrawDynamicsWorld dynamicsWorld $ \pt1 pt2 color -> do
                 uniformV4  uDiffuse             color
                 bufferSubData lineBuffer ([pt1, pt2] :: [V3 GLfloat])
                 withVAO lineVAO $ 
                     glDrawArrays GL_LINE_STRIP 0 2
-            --glEnable GL_DEPTH_TEST
+            glEnable GL_DEPTH_TEST
             swapBuffers gpWindow
 
 
