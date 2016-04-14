@@ -8,3 +8,5 @@ import Physics.Bullet.SpringConstraint as Exports
 import Physics.Bullet.PointToPointConstraint as Exports
 import Physics.Bullet.GhostObject as Exports
 import Physics.Bullet.CollisionObject as Exports
+import Physics.Bullet.DebugDraw as Exports
+

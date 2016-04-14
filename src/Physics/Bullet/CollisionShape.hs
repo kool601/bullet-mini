@@ -16,8 +16,8 @@ import Linear.Extra
 import Data.Monoid
 import Control.Monad.Trans
 import Physics.Bullet.Types
-
-C.context (C.cppCtx <> C.funCtx)
+import Data.Vector.Storable
+C.context (C.cppCtx <> C.funCtx <> C.vecCtx)
 
 C.include "<btBulletDynamicsCommon.h>"
 
@@ -45,3 +45,15 @@ createSphereShape (realToFrac -> radius) = liftIO $ CollisionShape <$> [C.block|
     btCollisionShape *shape = new btSphereShape($(float radius));
     return shape;
     }|]
+
+createConvexHullShape :: (MonadIO m) => Vector (V3 Float) -> m CollisionShape
+createConvexHullShape points = liftIO $ do
+    let pointsFlat = unsafeCast points
+    CollisionShape <$> [C.block| void * {
+
+        float* points = $vec-ptr:(float *pointsFlat);
+        int numPoints = $vec-len:pointsFlat / 3;
+
+        btCollisionShape *shape = new btConvexHullShape(points, numPoints);
+        return shape;
+        }|]

@@ -33,4 +33,6 @@ void main() {
     vec3 diffuseLit = diffuseCoefficient * surfaceColor.rgb * lightColor;
 
     fragColor = vec4(diffuseLit, uDiffuse.a);
+
+    fragColor = vec4(1,1,1,1);
 }
