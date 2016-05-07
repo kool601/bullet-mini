@@ -109,7 +109,7 @@ removeRigidBody (DynamicsWorld dynamicsWorld) (toCollisionObjectPointer -> rigid
 -- | This is the only reliable way I've found so far to change an object's shape.
 -- see: http://bulletphysics.org/Bullet/phpBB3/viewtopic.php?t=5194
 -- If we try setLocalScaling again, see if the calculateLocalInertia/setMassProps helps anything, as I didn't try that.
-setRigidBodyShape :: (MonadIO m, Real a) => DynamicsWorld -> RigidBody -> CollisionShape -> RigidBodyConfig -> m ()
+setRigidBodyShape :: (MonadIO m) => DynamicsWorld -> RigidBody -> CollisionShape -> RigidBodyConfig -> m ()
 setRigidBodyShape (DynamicsWorld dynamicsWorld) (toCollisionObjectPointer -> rigidBody) (CollisionShape collisionShape) RigidBodyConfig{..} = liftIO [C.block| void {
     btDiscreteDynamicsWorld *dynamicsWorld = (btDiscreteDynamicsWorld *) $(void *dynamicsWorld);
     btRigidBody             *rigidBody     = (btRigidBody *) $(void *rigidBody);
