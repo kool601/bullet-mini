@@ -76,6 +76,11 @@ addRigidBody (DynamicsWorld dynamicsWorld) (fromIntegral -> rigidBodyID) (Collis
         btRigidBody* rigidBody = new btRigidBody(rigidBodyCI);
 
         rigidBody->setRestitution($(float r));
+        rigidBody->setDamping(
+            $(float linearDamping),
+            $(float angularDamping));
+        rigidBody->setFriction($(float friction));
+        rigidBody->setRollingFriction($(float rollingFriction));
 
         // Attach the given CollisionObjectID
         rigidBody->setUserIndex($(int rigidBodyID));
@@ -94,6 +99,10 @@ addRigidBody (DynamicsWorld dynamicsWorld) (fromIntegral -> rigidBodyID) (Collis
       (Quaternion qw (V3 qx qy qz)) = realToFrac <$> rbRotation
       r                             = realToFrac     rbRestitution
       m                             = realToFrac     rbMass
+      linearDamping                 = realToFrac     rbLinearDamping
+      angularDamping                = realToFrac     rbAngularDamping
+      friction                      = realToFrac     rbFriction
+      rollingFriction               = realToFrac     rbRollingFriction
 
 removeRigidBody :: (Functor m, MonadIO m) => DynamicsWorld -> RigidBody -> m ()
 removeRigidBody (DynamicsWorld dynamicsWorld) (toCollisionObjectPointer -> rigidBody) = liftIO [C.block| void {
