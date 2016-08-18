@@ -12,7 +12,7 @@ module Physics.Bullet.CollisionShape where
 import qualified Language.C.Inline.Cpp as C
 
 import Foreign.C
-import Linear.Extra
+import Linear.Extra hiding (Vector)
 import Data.Monoid
 import Control.Monad.Trans
 import Physics.Bullet.Types

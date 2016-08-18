@@ -11,7 +11,6 @@ module Physics.Bullet.DynamicsWorld where
 
 import qualified Language.C.Inline.Cpp as C
 
-import Foreign.C
 import Foreign.Ptr
 import Linear.Extra
 import Control.Monad.Trans
@@ -22,7 +21,7 @@ import Physics.Bullet.Types
 import Text.RawString.QQ (r)
 
 {-
-See 
+See
 
 http://bulletphysics.org/Bullet/BulletFull/
 
@@ -36,7 +35,7 @@ C.include "<btBulletDynamicsCommon.h>"
 C.include "<BulletCollision/CollisionDispatch/btGhostObject.h>"
 
 
-createDynamicsWorld :: (Functor m, MonadIO m) =>  DynamicsWorldConfig -> m DynamicsWorld 
+createDynamicsWorld :: (MonadIO m) =>  DynamicsWorldConfig -> m DynamicsWorld
 createDynamicsWorld DynamicsWorldConfig{..} = DynamicsWorld <$> liftIO [C.block| void * {
 
   btBroadphaseInterface *broadphase = new btDbvtBroadphase();
@@ -63,50 +62,50 @@ createDynamicsWorld DynamicsWorldConfig{..} = DynamicsWorld <$> liftIO [C.block|
 
 stepSimulationSimple :: MonadIO m => DynamicsWorld -> NominalDiffTime -> m ()
 stepSimulationSimple (DynamicsWorld dynamicsWorld) (realToFrac -> dt) = liftIO [C.block| void {
-  
+
     btDiscreteDynamicsWorld *dynamicsWorld = (btDiscreteDynamicsWorld *)$(void *dynamicsWorld);
     dynamicsWorld->stepSimulation($(float dt));
-  
+
     }|]
 stepSimulationWithTimestep :: MonadIO m => DynamicsWorld -> NominalDiffTime -> Int -> Float -> m ()
 stepSimulationWithTimestep (DynamicsWorld dynamicsWorld) (realToFrac -> dt) (fromIntegral -> maxSubsteps) (realToFrac -> fixedTimeStep) = liftIO [C.block| void {
-  
+
     btDiscreteDynamicsWorld *dynamicsWorld = (btDiscreteDynamicsWorld *)$(void *dynamicsWorld);
     dynamicsWorld->stepSimulation($(float dt), $(int maxSubsteps), $(float fixedTimeStep));
-  
+
     }|]
 
 -- | See computeOverlappingPairs. Adding these two so we can detect GhostObject intersections
 -- even when the simulation is paused.
 performDiscreteCollisionDetection :: MonadIO m => DynamicsWorld -> m ()
 performDiscreteCollisionDetection (DynamicsWorld dynamicsWorld) = liftIO [C.block| void {
-  
+
     btDiscreteDynamicsWorld *dynamicsWorld = (btDiscreteDynamicsWorld *)$(void *dynamicsWorld);
     dynamicsWorld->performDiscreteCollisionDetection();
-  
+
     }|]
 
--- | "the computeOverlappingPairs is usually already called by performDiscreteCollisionDetection 
+-- | "the computeOverlappingPairs is usually already called by performDiscreteCollisionDetection
 -- (or stepSimulation) it can be useful to use if you perform ray tests without collision detection/simulation"
 computeOverlappingPairs :: MonadIO m => DynamicsWorld -> m ()
 computeOverlappingPairs (DynamicsWorld dynamicsWorld) = liftIO [C.block| void {
-  
+
     btDiscreteDynamicsWorld *dynamicsWorld = (btDiscreteDynamicsWorld *)$(void *dynamicsWorld);
     dynamicsWorld->computeOverlappingPairs();
-  
+
     }|]
 
 updateAABBs :: MonadIO m => DynamicsWorld -> m ()
 updateAABBs (DynamicsWorld dynamicsWorld) = liftIO [C.block| void {
-  
+
     btDiscreteDynamicsWorld *dynamicsWorld = (btDiscreteDynamicsWorld *)$(void *dynamicsWorld);
     dynamicsWorld->updateAabbs();
-  
+
     }|]
 
 getCollisions :: MonadIO m => DynamicsWorld -> m [Collision]
 getCollisions (DynamicsWorld dynamicsWorld) = liftIO $ do
-  
+
     collisionsRef <- newIORef []
     -- let captureCollision objA objB objAID objBID aX aY aZ bX bY bZ nX nY nZ impulse = do
     let captureCollision objAID objBID aX aY aZ bX bY bZ nX nY nZ impulse = do
@@ -121,60 +120,60 @@ getCollisions (DynamicsWorld dynamicsWorld) = liftIO $ do
                 , cbAppliedImpulse = realToFrac impulse
                 }
           modifyIORef collisionsRef (collision:)
-  
+
     [C.block| void {
         btDiscreteDynamicsWorld* dynamicsWorld = (btDiscreteDynamicsWorld*)$(void *dynamicsWorld);
-        
+
         int numCollisions = 0;
-    
+
         int numManifolds = dynamicsWorld->getDispatcher()->getNumManifolds();
         for (int i = 0; i < numManifolds; i++) {
 
             btPersistentManifold* contactManifold = dynamicsWorld->getDispatcher()->getManifoldByIndexInternal(i);
             int numContacts = contactManifold->getNumContacts();
-            
+
             // We only return one contact for now. I believe there are up to 4.
             if (numContacts > 0) {
                 btManifoldPoint& pt = contactManifold->getContactPoint(0);
                 if (pt.getDistance()<0.f) {
-          
+
                     const btCollisionObject* obA = contactManifold->getBody0();
                     const btCollisionObject* obB = contactManifold->getBody1();
-                    
+
                     const btVector3& ptA         = pt.getPositionWorldOnA();
                     const btVector3& ptB         = pt.getPositionWorldOnB();
                     const btVector3& nmB         = pt.m_normalWorldOnB;
-                    
+
                     btScalar impulse = pt.getAppliedImpulse();
 
-                    //printf("Distance: %f Impulse: %f Normal: %f %f %f \n", pt.getDistance(), impulse, 
+                    //printf("Distance: %f Impulse: %f Normal: %f %f %f \n", pt.getDistance(), impulse,
                     //  nmB.getX(), nmB.getY(), nmB.getZ());
-          
-                    // fun:(void (*captureCollision)(void*, void*, 
-                    //                               int, int, 
-                    //                               float, float, float, 
-                    //                               float, float, float, 
-                    //                               float, float, float, 
+
+                    // fun:(void (*captureCollision)(void*, void*,
+                    //                               int, int,
+                    //                               float, float, float,
+                    //                               float, float, float,
+                    //                               float, float, float,
                     //                               float))(
                     //   (void *)obA,
                     //   (void *)obB,
-                    $fun:(void (*captureCollision)(int, int, 
-                                                   float, float, float, 
-                                                   float, float, float, 
-                                                   float, float, float, 
+                    $fun:(void (*captureCollision)(int, int,
+                                                   float, float, float,
+                                                   float, float, float,
+                                                   float, float, float,
                                                    float)) (
                         obA->getUserIndex(),
                         obB->getUserIndex(),
                         ptA.getX(), ptA.getY(), ptA.getZ(),
-                        ptB.getX(), ptB.getY(), ptB.getZ(), 
+                        ptB.getX(), ptB.getY(), ptB.getZ(),
                         nmB.getX(), nmB.getY(), nmB.getZ(),
                         impulse
                         );
                 }
-            } 
+            }
         }
     }|]
-    
+
     readIORef collisionsRef
 
 data RayResult a = RayResult
@@ -197,13 +196,13 @@ rayTestClosest (DynamicsWorld dynamicsWorld) ray = liftIO $ do
         btCollisionWorld* world = (btCollisionWorld *)$(void *dynamicsWorld);
         btVector3 from = btVector3($(float fx), $(float fy), $(float fz));
         btVector3 to   = btVector3($(float tx), $(float ty), $(float tz));
-        
+
         btCollisionWorld::ClosestRayResultCallback callback(from, to);
         world->rayTest(from, to, callback);
-        
+
         btVector3 point  = callback.m_hitPointWorld;
         btVector3 normal = callback.m_hitNormalWorld;
-        $fun:(void (*captureRayResult)(void *, float, float, float, 
+        $fun:(void (*captureRayResult)(void *, float, float, float,
                                                float, float, float)) (
                 (void *)callback.m_collisionObject,
                 point.getX(),  point.getY(),  point.getZ(),
@@ -220,7 +219,7 @@ rayTestClosest (DynamicsWorld dynamicsWorld) ray = liftIO $ do
 destroyDynamicsWorld :: DynamicsWorld -> IO ()
 destroyDynamicsWorld (DynamicsWorld dynamicsWorld) = [C.block| void {
   btDiscreteDynamicsWorld* dynamicsWorld = (btDiscreteDynamicsWorld*)$(void *dynamicsWorld);
-  
+
   //delete solver;
   //delete collisionConfiguration;
   //delete dispatcher;
@@ -231,14 +230,14 @@ destroyDynamicsWorld (DynamicsWorld dynamicsWorld) = [C.block| void {
 
 C.verbatim [r|
 
-typedef void (*CaptureCollisionPtr)(int, int, 
-                                    float, float, float, 
-                                    float, float, float, 
-                                    float, float, float, 
+typedef void (*CaptureCollisionPtr)(int, int,
+                                    float, float, float,
+                                    float, float, float,
+                                    float, float, float,
                                     float);
 
 struct GatherContactResultsCallback : public btCollisionWorld::ContactResultCallback {
-  
+
     GatherContactResultsCallback(btCollisionObject* tgtBody , CaptureCollisionPtr context)
         : btCollisionWorld::ContactResultCallback(), body(tgtBody), funPtr(context) { }
 
@@ -254,21 +253,21 @@ struct GatherContactResultsCallback : public btCollisionWorld::ContactResultCall
     {
         const btCollisionObject* obA = colObj0->m_collisionObject;
         const btCollisionObject* obB = colObj1->m_collisionObject;
-        
+
         const btVector3& ptA         = pt.getPositionWorldOnA();
         const btVector3& ptB         = pt.getPositionWorldOnB();
         const btVector3& nmB         = pt.m_normalWorldOnB;
-        
+
         btScalar impulse = pt.getAppliedImpulse();
 
-        //printf("Distance: %f Impulse: %f Normal: %f %f %f \n", pt.getDistance(), impulse, 
+        //printf("Distance: %f Impulse: %f Normal: %f %f %f \n", pt.getDistance(), impulse,
         //  nmB.getX(), nmB.getY(), nmB.getZ());
 
         funPtr(
             obA->getUserIndex(),
             obB->getUserIndex(),
             ptA.getX(), ptA.getY(), ptA.getZ(),
-            ptB.getX(), ptB.getY(), ptB.getZ(), 
+            ptB.getX(), ptB.getY(), ptB.getZ(),
             nmB.getX(), nmB.getY(), nmB.getZ(),
             impulse
             );
@@ -302,10 +301,10 @@ contactTest (DynamicsWorld dynamicsWorld) (toCollisionObjectPointer -> collision
     btDiscreteDynamicsWorld* dynamicsWorld = (btDiscreteDynamicsWorld*)$(void *dynamicsWorld);
     btCollisionObject* collisionObject = (btCollisionObject *)$(void *collisionObject);
 
-    CaptureCollisionPtr captureCollisionPtr = $fun:(void (*captureCollision)(int, int, 
-                                       float, float, float, 
-                                       float, float, float, 
-                                       float, float, float, 
+    CaptureCollisionPtr captureCollisionPtr = $fun:(void (*captureCollision)(int, int,
+                                       float, float, float,
+                                       float, float, float,
+                                       float, float, float,
                                        float));
     GatherContactResultsCallback callback(collisionObject, captureCollisionPtr);
     dynamicsWorld->contactTest(collisionObject, callback);
