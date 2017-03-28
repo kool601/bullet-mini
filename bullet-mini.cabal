@@ -282,6 +282,8 @@ library
     -- ghc-options: -LC:\msys64\usr\local\ghc\mingw\x86_64-w64-mingw32\lib -lmingwex
   if os(osx)
     extra-libraries: c++
+  if os(linux)
+    extra-libraries: stdc++
   ghc-options:         -Wall -O2
   ghc-prof-options:    -Wall -O2 -fprof-auto
   
